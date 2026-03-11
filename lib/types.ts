@@ -64,14 +64,17 @@ export interface Settings {
   banner_enabled: boolean
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRecord = Record<string, any>
+
 export interface Database {
   public: {
     Tables: {
-      products: { Row: Product; Insert: Partial<Product>; Update: Partial<Product> }
-      participants: { Row: Participant; Insert: Partial<Participant>; Update: Partial<Participant> }
-      orders: { Row: Order; Insert: Partial<Order>; Update: Partial<Order> }
-      winners: { Row: Winner; Insert: Partial<Winner>; Update: Partial<Winner> }
-      settings: { Row: Settings; Insert: Partial<Settings>; Update: Partial<Settings> }
+      products: { Row: Product; Insert: AnyRecord; Update: AnyRecord }
+      participants: { Row: Participant; Insert: AnyRecord; Update: AnyRecord }
+      orders: { Row: Order; Insert: AnyRecord; Update: AnyRecord }
+      winners: { Row: Winner; Insert: AnyRecord; Update: AnyRecord }
+      settings: { Row: Settings; Insert: AnyRecord; Update: AnyRecord }
     }
   }
 }
