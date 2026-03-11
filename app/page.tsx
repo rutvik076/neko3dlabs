@@ -6,14 +6,16 @@ import HeroSection from '@/components/HeroSection'
 export const revalidate = 60
 
 export default async function HomePage() {
-  const { data: products } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const { data: products } = await sb
     .from('products')
     .select('*')
     .order('created_at', { ascending: false })
 
   const all = (products as Product[]) || []
-  const featured = all.filter(p => p.is_featured)
-  const rest = all.filter(p => !p.is_featured)
+  const featured = all.filter((p: Product) => p.is_featured)
+  const rest = all.filter((p: Product) => !p.is_featured)
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -26,7 +28,7 @@ export default async function HomePage() {
             <div className="flex-1 h-px bg-gradient-to-r from-blush-300 to-transparent" />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {featured.map((p, i) => (
+            {featured.map((p: Product, i: number) => (
               <ProductCard key={p.id} product={p} index={i} />
             ))}
           </div>
@@ -45,7 +47,7 @@ export default async function HomePage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {(rest.length > 0 ? rest : all).map((p, i) => (
+            {(rest.length > 0 ? rest : all).map((p: Product, i: number) => (
               <ProductCard key={p.id} product={p} index={i} />
             ))}
           </div>

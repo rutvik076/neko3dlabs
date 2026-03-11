@@ -10,17 +10,20 @@ export default function AdminWinners() {
   const [winners, setWinners] = useState<Winner[]>([])
   const [picking, setPicking] = useState<string | null>(null)
   const [uploadingProof, setUploadingProof] = useState<string | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
 
   async function load() {
     const [{ data: prods }, { data: parts }, { data: wins }] = await Promise.all([
-      supabase.from('products').select('*').eq('type', 'LUCKY_DRAW'),
-      supabase.from('participants').select('*').eq('status', 'approved'),
-      supabase.from('winners').select('*').order('created_at', { ascending: false }),
+      sb.from('products').select('*').eq('type', 'LUCKY_DRAW'),
+      sb.from('participants').select('*').eq('status', 'approved'),
+      sb.from('winners').select('*').order('created_at', { ascending: false }),
     ])
     setProducts((prods as Product[]) || [])
     setParticipants((parts as Participant[]) || [])
     setWinners((wins as Winner[]) || [])
   }
+
   useEffect(() => { load() }, [])
 
   async function pickWinner(productId: string) {
@@ -35,7 +38,7 @@ export default function AdminWinners() {
     window.crypto.getRandomValues(arr)
     const winner = eligible[arr[0] % eligible.length]
 
-    await supabase.from('winners').insert({
+    await sb.from('winners').insert({
       product_id: productId,
       participant_id: winner.id,
       winner_name: winner.name,
@@ -53,14 +56,17 @@ export default function AdminWinners() {
     try {
       const path = generateFilePath('shipping', file.name)
       const url = await uploadFile(BUCKETS.SHIPPING_PROOFS, path, file)
-      await supabase.from('winners').update({ shipping_proof_url: url }).eq('id', winnerId)
+      await sb.from('winners').update({ shipping_proof_url: url }).eq('id', winnerId)
       load()
-    } catch { alert('Upload failed') }
-    finally { setUploadingProof(null) }
+    } catch {
+      alert('Upload failed')
+    } finally {
+      setUploadingProof(null)
+    }
   }
 
   async function togglePublish(id: string, current: boolean) {
-    await supabase.from('winners').update({ is_published: !current }).eq('id', id)
+    await sb.from('winners').update({ is_published: !current }).eq('id', id)
     setWinners(ws => ws.map(w => w.id === id ? { ...w, is_published: !current } : w))
   }
 
@@ -68,7 +74,6 @@ export default function AdminWinners() {
     <div>
       <h1 className="font-display text-2xl font-bold text-choco-500 mb-6">Winners 🏆</h1>
 
-      {/* Lucky draw products */}
       <div className="space-y-4 mb-10">
         <h2 className="font-semibold text-choco-400 text-sm uppercase tracking-wide">Pick Winners</h2>
         {products.length === 0 && <p className="text-choco-300 text-sm">No lucky draw products.</p>}
@@ -82,12 +87,13 @@ export default function AdminWinners() {
                 <p className="text-sm text-choco-300 mt-0.5">{approved.length} approved entries</p>
               </div>
               {winner ? (
-                <div className="text-sm">
-                  <span className="tag-approved text-xs px-2 py-1 rounded-full font-semibold">Winner: {winner.winner_name}</span>
-                </div>
+                <span className="tag-approved text-xs px-2 py-1 rounded-full font-semibold">Winner: {winner.winner_name}</span>
               ) : (
-                <button onClick={() => pickWinner(p.id)} disabled={picking === p.id || approved.length === 0}
-                  className="btn-kawaii px-5 py-2.5 bg-gradient-to-r from-blush-400 to-blush-500 text-white text-sm shadow-md disabled:opacity-50 hover:shadow-lg">
+                <button
+                  onClick={() => pickWinner(p.id)}
+                  disabled={picking === p.id || approved.length === 0}
+                  className="btn-kawaii px-5 py-2.5 bg-gradient-to-r from-blush-400 to-blush-500 text-white text-sm shadow-md disabled:opacity-50 hover:shadow-lg"
+                >
                   {picking === p.id ? '🎲 Picking...' : '🎲 Pick Random Winner'}
                 </button>
               )}
@@ -96,7 +102,6 @@ export default function AdminWinners() {
         })}
       </div>
 
-      {/* All winners */}
       <div>
         <h2 className="font-semibold text-choco-400 text-sm uppercase tracking-wide mb-3">All Winners</h2>
         <div className="bg-white rounded-2xl border border-cream-200 overflow-hidden">
@@ -128,7 +133,7 @@ export default function AdminWinners() {
                       </td>
                       <td className="px-4 py-3">
                         {w.shipping_proof_url ? (
-                          <a href={w.shipping_proof_url} target="_blank" className="text-sage-400 text-xs font-semibold hover:underline">View Proof</a>
+                          <a href={w.shipping_proof_url} target="_blank" rel="noreferrer" className="text-sage-400 text-xs font-semibold hover:underline">View Proof</a>
                         ) : (
                           <label className="btn-kawaii px-3 py-1.5 text-xs bg-cream-100 text-choco-500 border border-cream-200 hover:bg-cream-200 cursor-pointer">
                             {uploadingProof === w.id ? 'Uploading...' : '📦 Upload Proof'}
@@ -138,7 +143,7 @@ export default function AdminWinners() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <a href={`https://wa.me/${w.winner_phone}`} target="_blank"
+                        <a href={`https://wa.me/${w.winner_phone}`} target="_blank" rel="noreferrer"
                           className="btn-kawaii px-3 py-1.5 text-xs bg-[#25d366]/10 text-[#128c7e] border border-[#25d366]/30 hover:bg-[#25d366]/20">
                           💬 WA
                         </a>

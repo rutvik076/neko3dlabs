@@ -7,16 +7,17 @@ import { formatDate } from '@/lib/utils'
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([])
   const [filter, setFilter] = useState<'all' | 'pending' | 'shipped' | 'completed' | 'cancelled'>('all')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
 
   async function load() {
-    const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false })
+    const { data } = await sb.from('orders').select('*').order('created_at', { ascending: false })
     setOrders((data as Order[]) || [])
   }
   useEffect(() => { load() }, [])
 
   async function updateStatus(id: string, status: Order['status']) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('orders').update({ status }).eq('id', id)
+    await sb.from('orders').update({ status }).eq('id', id)
     setOrders(os => os.map(o => o.id === id ? { ...o, status } : o))
   }
 
@@ -62,8 +63,11 @@ export default function AdminOrders() {
                     <span className={`text-xs px-2 py-1 rounded-full font-semibold tag-${o.status}`}>{o.status}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <select value={o.status} onChange={e => updateStatus(o.id, e.target.value as Order['status'])}
-                      className="bg-cream-50 border border-cream-200 rounded-xl px-3 py-1.5 text-xs text-choco-500 focus:outline-none focus:border-blush-300 cursor-pointer">
+                    <select
+                      value={o.status}
+                      onChange={e => updateStatus(o.id, e.target.value as Order['status'])}
+                      className="bg-cream-50 border border-cream-200 rounded-xl px-3 py-1.5 text-xs text-choco-500 focus:outline-none focus:border-blush-300 cursor-pointer"
+                    >
                       <option value="pending">Pending</option>
                       <option value="shipped">Shipped</option>
                       <option value="completed">Completed</option>

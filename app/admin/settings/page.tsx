@@ -7,15 +7,17 @@ export default function AdminSettings() {
   const [form, setForm] = useState<Partial<Settings>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
 
   useEffect(() => {
-    supabase.from('settings').select('*').eq('id', 1).single()
-      .then(({ data }) => { if (data) setForm(data as Settings) })
+    sb.from('settings').select('*').eq('id', 1).single()
+      .then(({ data }: { data: Settings | null }) => { if (data) setForm(data) })
   }, [])
 
   async function save() {
     setSaving(true)
-    await supabase.from('settings').update({
+    await sb.from('settings').update({
       youtube_url: form.youtube_url,
       whatsapp_number: form.whatsapp_number,
       site_name: form.site_name,
@@ -27,7 +29,7 @@ export default function AdminSettings() {
     setTimeout(() => setSaved(false), 2000)
   }
 
-  const f = (key: keyof Settings) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const handleField = (key: keyof Settings) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(s => ({ ...s, [key]: e.target.value }))
 
   return (
@@ -37,24 +39,24 @@ export default function AdminSettings() {
       <div className="bg-white rounded-2xl border border-cream-200 p-6 space-y-5">
         <div>
           <label className="block text-xs font-semibold text-choco-400 mb-1.5">Site Name</label>
-          <input value={form.site_name || ''} onChange={f('site_name')}
+          <input value={form.site_name || ''} onChange={handleField('site_name')}
             className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300" />
         </div>
         <div>
           <label className="block text-xs font-semibold text-choco-400 mb-1.5">YouTube Channel URL</label>
-          <input value={form.youtube_url || ''} onChange={f('youtube_url')}
+          <input value={form.youtube_url || ''} onChange={handleField('youtube_url')}
             placeholder="https://youtube.com/@neko3dlabs"
             className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300" />
         </div>
         <div>
           <label className="block text-xs font-semibold text-choco-400 mb-1.5">WhatsApp Number (with country code, no +)</label>
-          <input value={form.whatsapp_number || ''} onChange={f('whatsapp_number')}
+          <input value={form.whatsapp_number || ''} onChange={handleField('whatsapp_number')}
             placeholder="60123456789"
             className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300" />
         </div>
         <div className="pt-2 border-t border-cream-200">
           <label className="block text-xs font-semibold text-choco-400 mb-1.5">Winner Banner Text (optional)</label>
-          <input value={form.banner_text || ''} onChange={f('banner_text')}
+          <input value={form.banner_text || ''} onChange={handleField('banner_text')}
             placeholder="🏆 Congrats to our latest winner!"
             className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300" />
           <div className="flex items-center gap-2 mt-2">
@@ -71,10 +73,8 @@ export default function AdminSettings() {
         </button>
       </div>
 
-      {/* Storage setup guide */}
       <div className="mt-6 bg-cream-50 border border-cream-200 rounded-2xl p-5">
-        <h2 className="font-semibold text-choco-500 mb-3 text-sm">📦 Supabase Storage Setup</h2>
-        <p className="text-xs text-choco-300 mb-2">Create these buckets in Supabase Dashboard → Storage:</p>
+        <h2 className="font-semibold text-choco-500 mb-3 text-sm">📦 Supabase Storage Buckets Needed</h2>
         <ul className="space-y-1 text-xs">
           {[
             { name: 'product-images', pub: true },

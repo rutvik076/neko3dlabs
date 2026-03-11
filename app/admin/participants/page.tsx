@@ -9,22 +9,24 @@ export default function AdminParticipants() {
   const [products, setProducts] = useState<Record<string, Product>>({})
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
   const [screenshotModal, setScreenshotModal] = useState<string | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
 
   async function load() {
     const [{ data: parts }, { data: prods }] = await Promise.all([
-      supabase.from('participants').select('*').order('created_at', { ascending: false }),
-      supabase.from('products').select('*'),
+      sb.from('participants').select('*').order('created_at', { ascending: false }),
+      sb.from('products').select('*'),
     ])
     setParticipants((parts as Participant[]) || [])
     const map: Record<string, Product> = {}
-    ;((prods as Product[]) || []).forEach(p => { map[p.id] = p })
+    ;((prods as Product[]) || []).forEach((p: Product) => { map[p.id] = p })
     setProducts(map)
   }
 
   useEffect(() => { load() }, [])
 
   async function updateStatus(id: string, status: 'approved' | 'rejected') {
-    await supabase.from('participants').update({ status }).eq('id', id)
+    await sb.from('participants').update({ status }).eq('id', id)
     setParticipants(ps => ps.map(p => p.id === id ? { ...p, status } : p))
   }
 

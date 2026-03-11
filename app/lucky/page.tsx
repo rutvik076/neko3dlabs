@@ -8,7 +8,9 @@ export const revalidate = 60
 interface Props { searchParams: { product?: string } }
 
 export default async function LuckyPage({ searchParams }: Props) {
-  const { data: products } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const { data: products } = await sb
     .from('products')
     .select('*')
     .eq('type', 'LUCKY_DRAW')
@@ -27,7 +29,6 @@ export default async function LuckyPage({ searchParams }: Props) {
         <p className="text-choco-300 mt-2">Follow the steps below to enter and win free 3D prints!</p>
       </div>
 
-      {/* Steps */}
       <div className="space-y-3 mb-10 fade-up fade-up-1">
         {[
           { n: '01', title: 'Subscribe', desc: 'Subscribe to our YouTube channel.', href: ytUrl, cta: 'Subscribe Now →' },
@@ -48,7 +49,6 @@ export default async function LuckyPage({ searchParams }: Props) {
         ))}
       </div>
 
-      {/* Available draws */}
       {draws.length === 0 ? (
         <div className="text-center py-10">
           <p className="text-choco-300">No active lucky draws right now. Check back soon! 🐱</p>
@@ -58,7 +58,7 @@ export default async function LuckyPage({ searchParams }: Props) {
         <div className="fade-up fade-up-2">
           <h2 className="font-display text-xl font-bold text-choco-500 mb-4">Active Lucky Draws</h2>
           <div className="space-y-3 mb-8">
-            {draws.map(p => (
+            {draws.map((p: Product) => (
               <Link key={p.id} href={`/lucky?product=${p.id}`}
                 className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${selectedId === p.id ? 'border-blush-400 bg-blush-100/50' : 'border-cream-200 bg-white hover:border-blush-300'}`}>
                 <div className="w-14 h-14 rounded-xl bg-cream-100 overflow-hidden flex-shrink-0">
@@ -76,9 +76,8 @@ export default async function LuckyPage({ searchParams }: Props) {
               </Link>
             ))}
           </div>
-
-          {selectedId && draws.find(p => p.id === selectedId) && (
-            <LuckyDrawForm product={draws.find(p => p.id === selectedId)!} />
+          {selectedId && draws.find((p: Product) => p.id === selectedId) && (
+            <LuckyDrawForm product={draws.find((p: Product) => p.id === selectedId)!} />
           )}
         </div>
       )}

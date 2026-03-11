@@ -11,7 +11,10 @@ export const revalidate = 60
 interface Props { params: { id: string } }
 
 export default async function ProductPage({ params }: Props) {
-  const { data: product } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+
+  const { data: product } = await sb
     .from('products')
     .select('*')
     .eq('id', params.id)
@@ -26,7 +29,7 @@ export default async function ProductPage({ params }: Props) {
   )
   const ytId = p.video_url ? extractYouTubeId(p.video_url) : null
 
-  const { count } = await supabase
+  const { count } = await sb
     .from('participants')
     .select('*', { count: 'exact', head: true })
     .eq('product_id', p.id)
@@ -38,7 +41,6 @@ export default async function ProductPage({ params }: Props) {
       </Link>
 
       <div className="grid md:grid-cols-[1fr_0.618fr] gap-8 lg:gap-12">
-        {/* Images */}
         <div>
           <div className="aspect-square rounded-3xl overflow-hidden bg-cream-100 sticker-border relative">
             {p.images?.[0] ? (
@@ -51,18 +53,16 @@ export default async function ProductPage({ params }: Props) {
             </div>
           </div>
 
-          {/* Thumbnail strip */}
           {p.images?.length > 1 && (
             <div className="flex gap-2 mt-3">
-              {p.images.slice(1).map((img, i) => (
+              {p.images.slice(1).map((img: string, i: number) => (
                 <div key={i} className="w-16 h-16 rounded-xl overflow-hidden bg-cream-100 border-2 border-cream-200">
-                  <Image src={img} alt={`${p.name} ${i+2}`} width={64} height={64} className="object-cover w-full h-full" />
+                  <Image src={img} alt={`${p.name} ${i + 2}`} width={64} height={64} className="object-cover w-full h-full" />
                 </div>
               ))}
             </div>
           )}
 
-          {/* Video */}
           {ytId && (
             <div className="mt-4 rounded-2xl overflow-hidden aspect-video">
               <iframe
@@ -75,7 +75,6 @@ export default async function ProductPage({ params }: Props) {
           )}
         </div>
 
-        {/* Info */}
         <div className="fade-up">
           <span className={`inline-block text-xs font-semibold px-3 py-1 rounded-full mb-3 ${p.type === 'LUCKY_DRAW' ? 'tag-lucky' : 'tag-sell'}`}>
             {p.type === 'LUCKY_DRAW' ? '🎲 Free Lucky Draw' : '🛒 For Sale'}
@@ -106,7 +105,6 @@ export default async function ProductPage({ params }: Props) {
           )}
 
           <div className="h-px bg-cream-200 my-5" />
-
           <p className="text-choco-300 leading-relaxed text-sm">{p.description}</p>
 
           <div className="mt-6">

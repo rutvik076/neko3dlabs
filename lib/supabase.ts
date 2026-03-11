@@ -1,18 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from './types'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+// Using untyped client to avoid 'never' inference issues with custom Database generics
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const supabase = createClient(supabaseUrl, supabaseAnonKey) as any
 
 // Admin client using service role (server-side only)
 export function createAdminClient() {
-  return createClient<Database>(
+  return createClient(
     supabaseUrl,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
-  )
+  ) as any
 }
 
 // Storage helpers

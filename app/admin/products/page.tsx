@@ -17,9 +17,11 @@ export default function AdminProducts() {
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
 
   async function load() {
-    const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false })
+    const { data } = await sb.from('products').select('*').order('created_at', { ascending: false })
     setProducts((data as Product[]) || [])
   }
   useEffect(() => { load() }, [])
@@ -39,7 +41,7 @@ export default function AdminProducts() {
         urls.push(url)
       }
       setForm(f => ({ ...f, images: [...(f.images || []), ...urls] }))
-    } catch (err) {
+    } catch {
       alert('Image upload failed. Check your Supabase storage bucket "product-images" is public.')
     } finally {
       setUploading(false)
@@ -81,9 +83,9 @@ export default function AdminProducts() {
       is_featured: form.is_featured || false,
     }
     if (form.id) {
-      await supabase.from('products').update(payload).eq('id', form.id)
+      await sb.from('products').update(payload).eq('id', form.id)
     } else {
-      await supabase.from('products').insert(payload)
+      await sb.from('products').insert(payload)
     }
     setSaving(false)
     setModal(false)
@@ -93,7 +95,7 @@ export default function AdminProducts() {
   async function deleteProduct(id: string) {
     if (!confirm('Delete this product?')) return
     setDeleting(id)
-    await supabase.from('products').delete().eq('id', id)
+    await sb.from('products').delete().eq('id', id)
     setDeleting(null)
     load()
   }
@@ -125,7 +127,9 @@ export default function AdminProducts() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl overflow-hidden bg-cream-100 flex-shrink-0">
-                        {p.images?.[0] ? <img src={p.images[0]} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-lg">📦</div>}
+                        {p.images?.[0]
+                          ? <img src={p.images[0]} alt="" className="w-full h-full object-cover" />
+                          : <div className="w-full h-full flex items-center justify-center text-lg">📦</div>}
                       </div>
                       <span className="font-medium text-choco-500 max-w-[180px] truncate">{p.name}</span>
                     </div>
@@ -135,7 +139,9 @@ export default function AdminProducts() {
                   </td>
                   <td className="px-4 py-3 font-medium text-choco-400">{p.type === 'LUCKY_DRAW' ? 'FREE' : formatPrice(p.price)}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full font-semibold ${p.stock === 'in' ? 'tag-approved' : 'tag-rejected'}`}>{p.stock === 'in' ? 'In Stock' : 'Out'}</span>
+                    <span className={`text-xs px-2 py-1 rounded-full font-semibold ${p.stock === 'in' ? 'tag-approved' : 'tag-rejected'}`}>
+                      {p.stock === 'in' ? 'In Stock' : 'Out'}
+                    </span>
                   </td>
                   <td className="px-4 py-3">{p.is_featured ? '⭐' : '–'}</td>
                   <td className="px-4 py-3">
@@ -153,29 +159,25 @@ export default function AdminProducts() {
         </div>
       </div>
 
-      {/* Modal */}
       {modal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl p-6 w-full max-w-lg my-6 shadow-2xl">
             <h2 className="font-display text-xl font-bold text-choco-500 mb-5">{form.id ? 'Edit Product' : 'Add Product'}</h2>
-
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-choco-400 mb-1.5">Product Name *</label>
                 <input value={form.name || ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300" />
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-choco-400 mb-1.5">Description</label>
                 <textarea value={form.description || ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                   rows={3} className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300 resize-none" />
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-choco-400 mb-1.5">Type *</label>
-                  <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as any }))}
+                  <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as Product['type'] }))}
                     className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300">
                     <option value="SELL">SELL</option>
                     <option value="LUCKY_DRAW">LUCKY DRAW (Free)</option>
@@ -183,14 +185,13 @@ export default function AdminProducts() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-choco-400 mb-1.5">Stock</label>
-                  <select value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value as any }))}
+                  <select value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value as Product['stock'] }))}
                     className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300">
                     <option value="in">In Stock</option>
                     <option value="out">Out of Stock</option>
                   </select>
                 </div>
               </div>
-
               {form.type === 'SELL' && (
                 <div>
                   <label className="block text-xs font-semibold text-choco-400 mb-1.5">Price (RM)</label>
@@ -199,7 +200,6 @@ export default function AdminProducts() {
                     className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300" />
                 </div>
               )}
-
               {form.type === 'LUCKY_DRAW' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -216,8 +216,6 @@ export default function AdminProducts() {
                   </div>
                 </div>
               )}
-
-              {/* IMAGE UPLOAD */}
               <div>
                 <label className="block text-xs font-semibold text-choco-400 mb-1.5">Product Images</label>
                 <label className="block border-2 border-dashed border-cream-300 rounded-xl p-4 text-center cursor-pointer hover:border-blush-300 transition-colors bg-cream-50">
@@ -229,7 +227,7 @@ export default function AdminProducts() {
                   <div className="flex flex-wrap gap-2 mt-2">
                     {(form.images || []).map((img, i) => (
                       <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-cream-200 group">
-                        <img src={img} alt="" className="w-full h-full object-cover" />
+                        <Image src={img} alt="" fill className="object-cover" />
                         <button onClick={() => removeImage(i)}
                           className="absolute inset-0 bg-black/50 text-white text-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">×</button>
                       </div>
@@ -237,8 +235,6 @@ export default function AdminProducts() {
                   </div>
                 )}
               </div>
-
-              {/* VIDEO UPLOAD */}
               <div>
                 <label className="block text-xs font-semibold text-choco-400 mb-1.5">Product Video</label>
                 <div className="space-y-2">
@@ -247,19 +243,17 @@ export default function AdminProducts() {
                     <p className="text-xs text-choco-300">{uploading ? 'Uploading...' : 'Upload video file (MP4, WebM)'}</p>
                     <input type="file" accept="video/*" onChange={handleVideoUpload} disabled={uploading} className="hidden" />
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 text-xs text-choco-300 px-3">OR YouTube URL:</span>
-                    <input value={form.video_url?.startsWith('http') && !form.video_url?.includes('supabase') ? form.video_url : ''}
-                      onChange={e => setForm(f => ({ ...f, video_url: e.target.value }))}
-                      placeholder="                                  https://youtube.com/watch?v=..."
-                      className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300" />
-                  </div>
+                  <input
+                    value={form.video_url && !form.video_url.includes('supabase') ? form.video_url : ''}
+                    onChange={e => setForm(f => ({ ...f, video_url: e.target.value }))}
+                    placeholder="OR paste YouTube URL: https://youtube.com/watch?v=..."
+                    className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300"
+                  />
                   {form.video_url && (
-                    <p className="text-xs text-sage-400 truncate">✅ Video: {form.video_url.split('/').pop()}</p>
+                    <p className="text-xs text-sage-400 truncate">✅ {form.video_url.split('/').pop()}</p>
                   )}
                 </div>
               </div>
-
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="featured" checked={form.is_featured || false}
                   onChange={e => setForm(f => ({ ...f, is_featured: e.target.checked }))}
@@ -267,7 +261,6 @@ export default function AdminProducts() {
                 <label htmlFor="featured" className="text-sm text-choco-400 cursor-pointer">⭐ Mark as Featured</label>
               </div>
             </div>
-
             <div className="flex gap-3 mt-6">
               <button onClick={save} disabled={saving || uploading}
                 className="btn-kawaii flex-1 py-3 bg-blush-500 text-white font-semibold text-sm hover:bg-blush-400 disabled:opacity-60">
