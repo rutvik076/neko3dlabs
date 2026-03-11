@@ -14,10 +14,10 @@ export default function AdminOrders() {
   }
   useEffect(() => { load() }, [])
 
-  async function updateStatus(id: string, status: Order['status']) {
-    await supabase.from('orders').update({ status }).eq('id', id)
-    setOrders(os => os.map(o => o.id === id ? { ...o, status } : o))
-  }
+ async function updateStatus(id: string, status: Order['status']) {
+  const { error } = await supabase.from('orders').update({ status: status as string }).eq('id', id)
+  setOrders(os => os.map(o => o.id === id ? { ...o, status } : o))
+}
 
   const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter)
   const pending = orders.filter(o => o.status === 'pending').length
