@@ -17,7 +17,6 @@ export default function AdminProducts() {
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
 
   async function load() {
@@ -41,11 +40,8 @@ export default function AdminProducts() {
         urls.push(url)
       }
       setForm(f => ({ ...f, images: [...(f.images || []), ...urls] }))
-    } catch {
-      alert('Image upload failed. Check your Supabase storage bucket "product-images" is public.')
-    } finally {
-      setUploading(false)
-    }
+    } catch { alert('Image upload failed. Check your Supabase storage bucket "product-images" is public.') }
+    finally { setUploading(false) }
   }
 
   async function handleVideoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -56,11 +52,8 @@ export default function AdminProducts() {
       const path = generateFilePath('videos', file.name)
       const url = await uploadFile(BUCKETS.PRODUCT_VIDEOS, path, file)
       setForm(f => ({ ...f, video_url: url }))
-    } catch {
-      alert('Video upload failed. Check your Supabase storage bucket "product-videos" is public.')
-    } finally {
-      setUploading(false)
-    }
+    } catch { alert('Video upload failed.') }
+    finally { setUploading(false) }
   }
 
   function removeImage(idx: number) {
@@ -100,54 +93,60 @@ export default function AdminProducts() {
     load()
   }
 
+  const inputCls = "input-tech"
+  const labelCls = "block text-xs font-semibold text-steel-500 mb-1.5 uppercase tracking-wide"
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <h1 className="font-display text-2xl font-bold text-choco-500">Products 📦</h1>
-        <button onClick={openAdd} className="btn-kawaii px-5 py-2.5 bg-blush-500 text-white text-sm shadow-md hover:bg-blush-400">
+        <h1 className="font-display text-2xl font-bold text-graphite-700 tracking-tight">Products</h1>
+        <button onClick={openAdd} className="btn-tech btn-primary px-5 py-2.5 text-sm font-semibold">
           + Add Product
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-cream-200 overflow-hidden">
+      <div className="card-tech overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-cream-50 border-b border-cream-200">
+            <thead className="bg-steel-50 border-b border-steel-200">
               <tr>
-                {['Product', 'Type', 'Price', 'Stock', 'Featured', 'Actions'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-choco-400 font-semibold text-xs uppercase tracking-wide">{h}</th>
+                {['Product', 'Type', 'Price (₹)', 'Stock', 'Featured', 'Actions'].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-steel-500 font-semibold text-xs uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {products.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-12 text-choco-300">No products yet. Add one!</td></tr>
+                <tr><td colSpan={6} className="text-center py-12 text-steel-400">No products yet. Add one!</td></tr>
               ) : products.map(p => (
-                <tr key={p.id} className="border-b border-cream-100 hover:bg-cream-50 transition-colors">
+                <tr key={p.id} className="border-b border-steel-100 hover:bg-steel-50 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl overflow-hidden bg-cream-100 flex-shrink-0">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-steel-100 flex-shrink-0 border border-steel-200">
                         {p.images?.[0]
                           ? <img src={p.images[0]} alt="" className="w-full h-full object-cover" />
-                          : <div className="w-full h-full flex items-center justify-center text-lg">📦</div>}
+                          : <div className="w-full h-full flex items-center justify-center text-steel-300 text-xs">No img</div>}
                       </div>
-                      <span className="font-medium text-choco-500 max-w-[180px] truncate">{p.name}</span>
+                      <span className="font-medium text-graphite-700 max-w-[180px] truncate">{p.name}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full font-semibold ${p.type === 'LUCKY_DRAW' ? 'tag-lucky' : 'tag-sell'}`}>{p.type}</span>
+                    <span className={`text-xs px-2 py-1 rounded font-semibold ${p.type === 'LUCKY_DRAW' ? 'tag-lucky' : 'tag-sell'}`}>{p.type}</span>
                   </td>
-                  <td className="px-4 py-3 font-medium text-choco-400">{p.type === 'LUCKY_DRAW' ? 'FREE' : formatPrice(p.price)}</td>
+                  <td className="px-4 py-3 font-mono font-medium text-graphite-600">
+                    {p.type === 'LUCKY_DRAW' ? 'FREE' : formatPrice(p.price)}
+                  </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full font-semibold ${p.stock === 'in' ? 'tag-approved' : 'tag-rejected'}`}>
+                    <span className={`text-xs px-2 py-1 rounded font-semibold ${p.stock === 'in' ? 'tag-approved' : 'tag-rejected'}`}>
                       {p.stock === 'in' ? 'In Stock' : 'Out'}
                     </span>
                   </td>
-                  <td className="px-4 py-3">{p.is_featured ? '⭐' : '–'}</td>
+                  <td className="px-4 py-3 text-center">{p.is_featured ? '⭐' : '–'}</td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <button onClick={() => openEdit(p)} className="btn-kawaii px-3 py-1.5 text-xs bg-cream-100 text-choco-500 border border-cream-200 hover:bg-cream-200">Edit</button>
-                      <button onClick={() => deleteProduct(p.id)} disabled={deleting === p.id} className="btn-kawaii px-3 py-1.5 text-xs bg-red-50 text-red-500 border border-red-200 hover:bg-red-100">
+                    <div className="flex gap-1.5">
+                      <button onClick={() => openEdit(p)} className="btn-tech btn-ghost px-3 py-1.5 text-xs">Edit</button>
+                      <button onClick={() => deleteProduct(p.id)} disabled={deleting === p.id}
+                        className="btn-tech px-3 py-1.5 text-xs bg-red-50 text-red-600 border border-red-200 hover:bg-red-100">
                         {deleting === p.id ? '...' : 'Del'}
                       </button>
                     </div>
@@ -160,33 +159,35 @@ export default function AdminProducts() {
       </div>
 
       {modal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-lg my-6 shadow-2xl">
-            <h2 className="font-display text-xl font-bold text-choco-500 mb-5">{form.id ? 'Edit Product' : 'Add Product'}</h2>
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl border border-steel-200 p-6 w-full max-w-lg my-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="accent-line" />
+              <h2 className="font-display text-xl font-bold text-graphite-700">{form.id ? 'Edit Product' : 'Add Product'}</h2>
+            </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-choco-400 mb-1.5">Product Name *</label>
-                <input value={form.name || ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300" />
+                <label className={labelCls}>Product Name *</label>
+                <input value={form.name || ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-choco-400 mb-1.5">Description</label>
+                <label className={labelCls}>Description</label>
                 <textarea value={form.description || ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  rows={3} className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300 resize-none" />
+                  rows={3} className="input-tech resize-none" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-choco-400 mb-1.5">Type *</label>
+                  <label className={labelCls}>Type *</label>
                   <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as Product['type'] }))}
-                    className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300">
+                    className={inputCls}>
                     <option value="SELL">SELL</option>
                     <option value="LUCKY_DRAW">LUCKY DRAW (Free)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-choco-400 mb-1.5">Stock</label>
+                  <label className={labelCls}>Stock</label>
                   <select value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value as Product['stock'] }))}
-                    className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300">
+                    className={inputCls}>
                     <option value="in">In Stock</option>
                     <option value="out">Out of Stock</option>
                   </select>
@@ -194,81 +195,77 @@ export default function AdminProducts() {
               </div>
               {form.type === 'SELL' && (
                 <div>
-                  <label className="block text-xs font-semibold text-choco-400 mb-1.5">Price (RM)</label>
-                  <input type="number" min="0" step="0.01" value={form.price || 0}
+                  <label className={labelCls}>Price (₹ INR)</label>
+                  <input type="number" min="0" step="1" value={form.price || 0}
                     onChange={e => setForm(f => ({ ...f, price: parseFloat(e.target.value) }))}
-                    className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300" />
+                    className={inputCls} />
                 </div>
               )}
               {form.type === 'LUCKY_DRAW' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-choco-400 mb-1.5">Draw End Date</label>
+                    <label className={labelCls}>Draw End Date</label>
                     <input type="date" value={form.lucky_draw_end || ''}
                       onChange={e => setForm(f => ({ ...f, lucky_draw_end: e.target.value }))}
-                      className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300" />
+                      className={inputCls} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-choco-400 mb-1.5">Max Participants</label>
+                    <label className={labelCls}>Max Participants</label>
                     <input type="number" min="0" value={form.max_participants || 0}
                       onChange={e => setForm(f => ({ ...f, max_participants: parseInt(e.target.value) }))}
-                      className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300" />
+                      className={inputCls} />
                   </div>
                 </div>
               )}
               <div>
-                <label className="block text-xs font-semibold text-choco-400 mb-1.5">Product Images</label>
-                <label className="block border-2 border-dashed border-cream-300 rounded-xl p-4 text-center cursor-pointer hover:border-blush-300 transition-colors bg-cream-50">
-                  <div className="text-2xl mb-1">🖼️</div>
-                  <p className="text-xs text-choco-300">{uploading ? 'Uploading...' : 'Click to upload images (JPG, PNG, WebP)'}</p>
+                <label className={labelCls}>Product Images</label>
+                <label className="block border-2 border-dashed border-steel-200 rounded-lg p-4 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors bg-steel-50">
+                  <div className="text-xl mb-1">🖼️</div>
+                  <p className="text-xs text-steel-500 font-medium">{uploading ? 'Uploading...' : 'Click to upload images (JPG, PNG, WebP)'}</p>
                   <input type="file" accept="image/*" multiple onChange={handleImageUpload} disabled={uploading} className="hidden" />
                 </label>
                 {(form.images || []).length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {(form.images || []).map((img, i) => (
-                      <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-cream-200 group">
+                      <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-steel-200 group">
                         <Image src={img} alt="" fill className="object-cover" />
                         <button onClick={() => removeImage(i)}
-                          className="absolute inset-0 bg-black/50 text-white text-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">×</button>
+                          className="absolute inset-0 bg-black/60 text-white text-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center font-bold">×</button>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-choco-400 mb-1.5">Product Video</label>
+                <label className={labelCls}>Product Video</label>
                 <div className="space-y-2">
-                  <label className="block border-2 border-dashed border-cream-300 rounded-xl p-4 text-center cursor-pointer hover:border-blush-300 transition-colors bg-cream-50">
-                    <div className="text-2xl mb-1">🎬</div>
-                    <p className="text-xs text-choco-300">{uploading ? 'Uploading...' : 'Upload video file (MP4, WebM)'}</p>
+                  <label className="block border-2 border-dashed border-steel-200 rounded-lg p-4 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors bg-steel-50">
+                    <div className="text-xl mb-1">🎬</div>
+                    <p className="text-xs text-steel-500 font-medium">{uploading ? 'Uploading...' : 'Upload video file (MP4, WebM)'}</p>
                     <input type="file" accept="video/*" onChange={handleVideoUpload} disabled={uploading} className="hidden" />
                   </label>
                   <input
                     value={form.video_url && !form.video_url.includes('supabase') ? form.video_url : ''}
                     onChange={e => setForm(f => ({ ...f, video_url: e.target.value }))}
                     placeholder="OR paste YouTube URL: https://youtube.com/watch?v=..."
-                    className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300"
+                    className={inputCls}
                   />
-                  {form.video_url && (
-                    <p className="text-xs text-sage-400 truncate">✅ {form.video_url.split('/').pop()}</p>
-                  )}
+                  {form.video_url && <p className="text-xs text-green-600 font-medium truncate">✓ {form.video_url.split('/').pop()}</p>}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 p-3 bg-steel-50 rounded-lg border border-steel-200">
                 <input type="checkbox" id="featured" checked={form.is_featured || false}
                   onChange={e => setForm(f => ({ ...f, is_featured: e.target.checked }))}
-                  className="accent-blush-400 w-4 h-4" />
-                <label htmlFor="featured" className="text-sm text-choco-400 cursor-pointer">⭐ Mark as Featured</label>
+                  className="accent-blue-500 w-4 h-4" />
+                <label htmlFor="featured" className="text-sm text-steel-600 cursor-pointer font-medium">⭐ Mark as Featured</label>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={save} disabled={saving || uploading}
-                className="btn-kawaii flex-1 py-3 bg-blush-500 text-white font-semibold text-sm hover:bg-blush-400 disabled:opacity-60">
+                className="btn-tech btn-primary flex-1 py-3 text-sm font-semibold disabled:opacity-60">
                 {saving ? 'Saving...' : 'Save Product'}
               </button>
-              <button onClick={() => setModal(false)} className="btn-kawaii px-6 py-3 bg-cream-100 text-choco-500 border border-cream-200 text-sm hover:bg-cream-200">
-                Cancel
-              </button>
+              <button onClick={() => setModal(false)} className="btn-tech btn-ghost px-6 py-3 text-sm">Cancel</button>
             </div>
           </div>
         </div>

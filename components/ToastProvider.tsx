@@ -16,14 +16,23 @@ export default function ToastProvider({ children }: { children: React.ReactNode 
     setTimeout(() => setToasts(ts => ts.filter(t => t.id !== id)), 3000)
   }, [])
 
-  const colors = { success: 'bg-sage-400 text-white', error: 'bg-red-500 text-white', info: 'bg-choco-400 text-white' }
+  const styles = {
+    success: 'bg-graphite-800 text-white border border-green-500/30',
+    error:   'bg-graphite-800 text-white border border-red-500/30',
+    info:    'bg-graphite-800 text-white border border-blue-500/30',
+  }
+  const icons = { success: '✓', error: '✕', info: 'i' }
+  const dotColors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' }
 
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-2 items-center pointer-events-none">
         {toasts.map(t => (
-          <div key={t.id} className={`${colors[t.type]} px-5 py-2.5 rounded-full text-sm font-semibold shadow-lg toast-enter whitespace-nowrap`}>
+          <div key={t.id} className={`${styles[t.type]} flex items-center gap-2.5 px-4 py-2.5 rounded-lg text-sm font-medium shadow-xl toast-enter whitespace-nowrap`}>
+            <span className={`w-4 h-4 rounded-full ${dotColors[t.type]} flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0`}>
+              {icons[t.type]}
+            </span>
             {t.message}
           </div>
         ))}

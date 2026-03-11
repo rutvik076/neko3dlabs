@@ -25,15 +25,18 @@ export default function YTPopup() {
   const ytUrl = process.env.NEXT_PUBLIC_YOUTUBE_URL || 'https://youtube.com'
 
   return (
-    <div className="fixed bottom-24 right-4 z-50 w-64 bg-white border border-cream-200 rounded-2xl p-4 shadow-2xl toast-enter">
-      <button onClick={dismiss} className="absolute top-3 right-3 text-choco-300 hover:text-choco-500 text-sm w-5 h-5 flex items-center justify-center">✕</button>
+    <div className="fixed bottom-24 right-4 z-50 w-64 bg-graphite-800 border border-graphite-600 rounded-xl p-4 shadow-2xl toast-enter">
+      <button onClick={dismiss}
+        className="absolute top-3 right-3 text-graphite-300 hover:text-white text-sm w-6 h-6 flex items-center justify-center rounded hover:bg-graphite-600 transition-colors">
+        ✕
+      </button>
       <div className="flex items-start gap-3">
-        <div className="text-2xl">🎥</div>
+        <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center text-white text-sm flex-shrink-0 mt-0.5">▶</div>
         <div>
-          <h3 className="font-semibold text-choco-500 text-sm leading-tight">Join our YouTube!</h3>
-          <p className="text-xs text-choco-300 mt-1">Subscribe & never miss a new product or lucky draw!</p>
+          <h3 className="font-semibold text-white text-sm leading-tight">Follow on YouTube</h3>
+          <p className="text-xs text-graphite-300 mt-1 leading-relaxed">Get notified about new products and lucky draws!</p>
           <a href={ytUrl} target="_blank" rel="noreferrer" onClick={dismiss}
-            className="btn-kawaii mt-3 px-4 py-2 bg-red-500 text-white text-xs inline-flex font-semibold hover:bg-red-600">
+            className="btn-tech mt-3 px-4 py-2 bg-red-600 text-white text-xs inline-flex font-semibold hover:bg-red-700">
             ▶ Subscribe Free
           </a>
         </div>

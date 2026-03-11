@@ -5,11 +5,12 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatPrice(price: number) {
-  return `RM ${price.toFixed(2)}`
+  // Format as Indian Rupees
+  return `₹${price.toLocaleString('en-IN')}`
 }
 
 export function formatDate(date: string) {
-  return new Date(date).toLocaleDateString('en-MY', {
+  return new Date(date).toLocaleDateString('en-IN', {
     year: 'numeric', month: 'short', day: 'numeric'
   })
 }

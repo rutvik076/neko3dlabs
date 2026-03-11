@@ -8,9 +8,8 @@ export default function LuckyDrawButton({ productId }: Props) {
   return (
     <button
       onClick={() => router.push(`/lucky?product=${productId}`)}
-      className="btn-kawaii w-full py-4 bg-gradient-to-r from-blush-400 to-blush-500 text-white text-base shadow-lg hover:shadow-xl"
-      style={{ boxShadow: '0 4px 20px rgba(217,85,85,0.35)' }}>
-      🎲 Join Lucky Draw
+      className="btn-tech btn-accent w-full py-4 text-base font-semibold shadow-orange-glow">
+      🎲 Join Lucky Draw — FREE
     </button>
   )
 }

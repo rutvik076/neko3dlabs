@@ -19,40 +19,48 @@ export default function AdminLoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-cream-50 paw-bg flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl border border-cream-200 p-8 w-full max-w-sm shadow-xl">
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 rounded-full overflow-hidden sticker-border mx-auto mb-3 float">
-            <Image src="/logo.png" alt="Neko3DLabs" width={64} height={64} className="object-cover" />
+    <div className="min-h-screen bg-graphite-800 grid-bg flex items-center justify-center p-4">
+      {/* Accent top bar */}
+      <div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-orange-400 to-blue-500" />
+
+      <div className="bg-white rounded-xl border border-steel-200 p-8 w-full max-w-sm shadow-2xl">
+        <div className="text-center mb-7">
+          <div className="w-14 h-14 rounded-xl overflow-hidden border-2 border-steel-200 mx-auto mb-4">
+            <Image src="/logo.png" alt="Neko3DLabs" width={56} height={56} className="object-cover" />
           </div>
-          <h1 className="font-display text-xl font-bold text-choco-500">Admin Login</h1>
-          <p className="text-xs text-choco-300 mt-1">Neko3DLabs Dashboard</p>
+          <h1 className="font-display text-xl font-bold text-graphite-700">Admin Login</h1>
+          <p className="text-xs text-steel-400 mt-1">Neko3DLabs Dashboard</p>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-choco-400 mb-1.5">Email</label>
+            <label className="block text-xs font-semibold text-steel-500 mb-1.5 uppercase tracking-wide">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
               placeholder="admin@neko3dlabs.com" onKeyDown={e => e.key === 'Enter' && login()}
-              className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300" />
+              className="input-tech" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-choco-400 mb-1.5">Password</label>
+            <label className="block text-xs font-semibold text-steel-500 mb-1.5 uppercase tracking-wide">Password</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
               placeholder="••••••••" onKeyDown={e => e.key === 'Enter' && login()}
-              className="w-full bg-cream-50 border border-cream-200 rounded-xl px-4 py-2.5 text-sm text-choco-500 focus:outline-none focus:border-blush-300" />
+              className="input-tech" />
           </div>
 
-          {error && <p className="text-red-500 text-xs bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</p>}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 flex items-start gap-2">
+              <span className="text-red-500 text-xs mt-0.5">⚠</span>
+              <p className="text-red-600 text-xs">{error}</p>
+            </div>
+          )}
 
           <button onClick={login} disabled={loading}
-            className="btn-kawaii w-full py-3 bg-blush-500 text-white font-semibold text-sm hover:bg-blush-400 disabled:opacity-60 shadow-md">
-            {loading ? '🐱 Logging in...' : '🔐 Login'}
+            className="btn-tech btn-primary w-full py-3 text-sm font-semibold disabled:opacity-60">
+            {loading ? 'Authenticating...' : '→ Sign In'}
           </button>
         </div>
 
-        <p className="text-xs text-choco-300 text-center mt-5">
-          Create your admin account in Supabase Auth dashboard.
+        <p className="text-xs text-steel-400 text-center mt-5">
+          Manage your account in Supabase Auth dashboard.
         </p>
       </div>
     </div>

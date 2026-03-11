@@ -6,7 +6,6 @@ import HeroSection from '@/components/HeroSection'
 export const revalidate = 60
 
 export default async function HomePage() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
   const { data: products } = await sb
     .from('products')
@@ -22,10 +21,10 @@ export default async function HomePage() {
       <HeroSection />
 
       {featured.length > 0 && (
-        <section className="mb-10">
-          <div className="flex items-center gap-3 mb-5">
-            <h2 className="font-display text-2xl font-bold text-choco-500">✨ Featured</h2>
-            <div className="flex-1 h-px bg-gradient-to-r from-blush-300 to-transparent" />
+        <section className="mb-10 fade-up">
+          <div className="flex items-center gap-4 mb-5">
+            <div className="accent-line" />
+            <h2 className="font-display text-xl font-bold text-graphite-700 tracking-tight">Featured Products</h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {featured.map((p: Product, i: number) => (
@@ -35,15 +34,22 @@ export default async function HomePage() {
         </section>
       )}
 
-      <section>
-        <div className="flex items-center gap-3 mb-5">
-          <h2 className="font-display text-2xl font-bold text-choco-500">🛒 All Products</h2>
-          <div className="flex-1 h-px bg-gradient-to-r from-blush-300 to-transparent" />
+      <section className="fade-up fade-up-1">
+        <div className="flex items-center gap-4 mb-5">
+          <div className="accent-line" />
+          <h2 className="font-display text-xl font-bold text-graphite-700 tracking-tight">All Products</h2>
+          <span className="text-sm text-steel-400 font-medium">{all.length} items</span>
         </div>
         {all.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4 float inline-block">🐱</div>
-            <p className="text-choco-300 font-body">No products yet — check back soon!</p>
+          <div className="text-center py-20 bg-white rounded-xl border border-steel-200">
+            <div className="w-16 h-16 mx-auto mb-4 bg-steel-100 rounded-xl flex items-center justify-center">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="text-steel-400">
+                <rect x="4" y="10" width="24" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                <path d="M4 15l12-6 12 6" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                <rect x="11" y="19" width="10" height="9" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+              </svg>
+            </div>
+            <p className="text-steel-400 font-medium">No products yet — check back soon!</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

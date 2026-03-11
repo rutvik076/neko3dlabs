@@ -10,7 +10,6 @@ export default function AdminWinners() {
   const [winners, setWinners] = useState<Winner[]>([])
   const [picking, setPicking] = useState<string | null>(null)
   const [uploadingProof, setUploadingProof] = useState<string | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
 
   async function load() {
@@ -23,13 +22,12 @@ export default function AdminWinners() {
     setParticipants((parts as Participant[]) || [])
     setWinners((wins as Winner[]) || [])
   }
-
   useEffect(() => { load() }, [])
 
   async function pickWinner(productId: string) {
     const eligible = participants.filter(p => p.product_id === productId)
     const alreadyWon = winners.some(w => w.product_id === productId)
-    if (alreadyWon) { alert('A winner has already been picked for this product.'); return }
+    if (alreadyWon) { alert('A winner has already been picked.'); return }
     if (eligible.length === 0) { alert('No approved participants for this product.'); return }
     if (!confirm(`Pick a random winner from ${eligible.length} participants?`)) return
 
@@ -58,11 +56,8 @@ export default function AdminWinners() {
       const url = await uploadFile(BUCKETS.SHIPPING_PROOFS, path, file)
       await sb.from('winners').update({ shipping_proof_url: url }).eq('id', winnerId)
       load()
-    } catch {
-      alert('Upload failed')
-    } finally {
-      setUploadingProof(null)
-    }
+    } catch { alert('Upload failed') }
+    finally { setUploadingProof(null) }
   }
 
   async function togglePublish(id: string, current: boolean) {
@@ -72,88 +67,90 @@ export default function AdminWinners() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold text-choco-500 mb-6">Winners 🏆</h1>
+      <h1 className="font-display text-2xl font-bold text-graphite-700 tracking-tight mb-6">Winners</h1>
 
-      <div className="space-y-4 mb-10">
-        <h2 className="font-semibold text-choco-400 text-sm uppercase tracking-wide">Pick Winners</h2>
-        {products.length === 0 && <p className="text-choco-300 text-sm">No lucky draw products.</p>}
-        {products.map(p => {
-          const approved = participants.filter(pt => pt.product_id === p.id)
-          const winner = winners.find(w => w.product_id === p.id)
-          return (
-            <div key={p.id} className="bg-white border border-cream-200 rounded-2xl p-4 flex items-center gap-4 flex-wrap">
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-choco-500">{p.name}</h3>
-                <p className="text-sm text-choco-300 mt-0.5">{approved.length} approved entries</p>
+      <div className="card-tech p-5 mb-8">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="accent-line" />
+          <h2 className="font-semibold text-graphite-700 text-sm uppercase tracking-wide">Pick Winners</h2>
+        </div>
+        {products.length === 0 && <p className="text-steel-400 text-sm">No lucky draw products.</p>}
+        <div className="space-y-3">
+          {products.map(p => {
+            const approved = participants.filter(pt => pt.product_id === p.id)
+            const winner = winners.find(w => w.product_id === p.id)
+            return (
+              <div key={p.id} className="flex items-center gap-4 flex-wrap p-4 bg-steel-50 border border-steel-200 rounded-xl">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-graphite-700 text-sm">{p.name}</h3>
+                  <p className="text-xs text-steel-400 mt-0.5">{approved.length} approved entries</p>
+                </div>
+                {winner
+                  ? <span className="tag-approved text-xs px-3 py-1.5 rounded font-semibold">Winner: {winner.winner_name}</span>
+                  : <button onClick={() => pickWinner(p.id)} disabled={picking === p.id || approved.length === 0}
+                      className="btn-tech btn-accent px-5 py-2.5 text-sm disabled:opacity-50">
+                      {picking === p.id ? 'Picking...' : '🎲 Pick Random Winner'}
+                    </button>
+                }
               </div>
-              {winner ? (
-                <span className="tag-approved text-xs px-2 py-1 rounded-full font-semibold">Winner: {winner.winner_name}</span>
-              ) : (
-                <button
-                  onClick={() => pickWinner(p.id)}
-                  disabled={picking === p.id || approved.length === 0}
-                  className="btn-kawaii px-5 py-2.5 bg-gradient-to-r from-blush-400 to-blush-500 text-white text-sm shadow-md disabled:opacity-50 hover:shadow-lg"
-                >
-                  {picking === p.id ? '🎲 Picking...' : '🎲 Pick Random Winner'}
-                </button>
-              )}
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
 
-      <div>
-        <h2 className="font-semibold text-choco-400 text-sm uppercase tracking-wide mb-3">All Winners</h2>
-        <div className="bg-white rounded-2xl border border-cream-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-cream-50 border-b border-cream-200">
-                <tr>
-                  {['Winner', 'Phone', 'Product', 'Date', 'Published', 'Shipping', 'Actions'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-choco-400 font-semibold text-xs uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {winners.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-12 text-choco-300">No winners yet.</td></tr>
-                ) : winners.map(w => {
+      <div className="card-tech overflow-hidden">
+        <div className="p-5 border-b border-steel-200 flex items-center gap-3">
+          <div className="accent-line" />
+          <h2 className="font-semibold text-graphite-700 text-sm uppercase tracking-wide">All Winners</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-steel-50 border-b border-steel-200">
+              <tr>
+                {['Winner', 'Phone', 'Product', 'Date', 'Published', 'Shipping', 'Actions'].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-steel-500 font-semibold text-xs uppercase tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {winners.length === 0
+                ? <tr><td colSpan={7} className="text-center py-12 text-steel-400">No winners yet.</td></tr>
+                : winners.map(w => {
                   const prod = products.find(p => p.id === w.product_id)
                   return (
-                    <tr key={w.id} className="border-b border-cream-100 hover:bg-cream-50">
-                      <td className="px-4 py-3 font-medium text-choco-500">{w.winner_name}</td>
-                      <td className="px-4 py-3 text-choco-400">{w.winner_phone}</td>
-                      <td className="px-4 py-3 text-choco-400">{prod?.name || '–'}</td>
-                      <td className="px-4 py-3 text-choco-400 whitespace-nowrap">{formatDate(w.announce_date)}</td>
+                    <tr key={w.id} className="border-b border-steel-100 hover:bg-steel-50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-graphite-700">{w.winner_name}</td>
+                      <td className="px-4 py-3 text-steel-500 font-mono text-xs">{w.winner_phone}</td>
+                      <td className="px-4 py-3 text-steel-500 text-xs">{prod?.name || '–'}</td>
+                      <td className="px-4 py-3 text-steel-400 text-xs whitespace-nowrap">{formatDate(w.announce_date)}</td>
                       <td className="px-4 py-3">
                         <button onClick={() => togglePublish(w.id, w.is_published)}
-                          className={`btn-kawaii px-3 py-1 text-xs ${w.is_published ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-cream-100 text-choco-400 border border-cream-200'}`}>
-                          {w.is_published ? '✅ Public' : '🔒 Hidden'}
+                          className={`btn-tech px-3 py-1 text-xs ${w.is_published ? 'tag-approved' : 'tag-cancelled'} font-semibold`}>
+                          {w.is_published ? '✓ Public' : '✗ Hidden'}
                         </button>
                       </td>
                       <td className="px-4 py-3">
-                        {w.shipping_proof_url ? (
-                          <a href={w.shipping_proof_url} target="_blank" rel="noreferrer" className="text-sage-400 text-xs font-semibold hover:underline">View Proof</a>
-                        ) : (
-                          <label className="btn-kawaii px-3 py-1.5 text-xs bg-cream-100 text-choco-500 border border-cream-200 hover:bg-cream-200 cursor-pointer">
-                            {uploadingProof === w.id ? 'Uploading...' : '📦 Upload Proof'}
-                            <input type="file" accept="image/*,video/*" className="hidden"
-                              onChange={e => e.target.files?.[0] && uploadShippingProof(w.id, e.target.files[0])} />
-                          </label>
-                        )}
+                        {w.shipping_proof_url
+                          ? <a href={w.shipping_proof_url} target="_blank" rel="noreferrer" className="text-blue-600 text-xs font-semibold hover:underline">View</a>
+                          : <label className="btn-tech btn-ghost px-3 py-1.5 text-xs cursor-pointer">
+                              {uploadingProof === w.id ? 'Uploading...' : 'Upload Proof'}
+                              <input type="file" accept="image/*,video/*" className="hidden"
+                                onChange={e => e.target.files?.[0] && uploadShippingProof(w.id, e.target.files[0])} />
+                            </label>
+                        }
                       </td>
                       <td className="px-4 py-3">
                         <a href={`https://wa.me/${w.winner_phone}`} target="_blank" rel="noreferrer"
-                          className="btn-kawaii px-3 py-1.5 text-xs bg-[#25d366]/10 text-[#128c7e] border border-[#25d366]/30 hover:bg-[#25d366]/20">
-                          💬 WA
+                          className="btn-tech px-3 py-1.5 text-xs bg-[#25d366]/10 text-[#128c7e] border border-[#25d366]/30 hover:bg-[#25d366]/20">
+                          WA
                         </a>
                       </td>
                     </tr>
                   )
-                })}
-              </tbody>
-            </table>
-          </div>
+                })
+              }
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
