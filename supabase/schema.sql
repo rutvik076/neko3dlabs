@@ -90,43 +90,156 @@ CREATE TABLE IF NOT EXISTS settings (
 INSERT INTO settings (id) VALUES (1) ON CONFLICT DO NOTHING;
 
 -- =============================================
--- STORAGE BUCKETS
--- Run these in Supabase Dashboard > Storage
--- =============================================
--- Bucket: product-images (public)
--- Bucket: product-videos (public)
--- Bucket: screenshots (private)
--- Bucket: shipping-proofs (private)
-
--- =============================================
 -- ROW LEVEL SECURITY
 -- =============================================
 
--- Products: public read, admin write
+-- ----- PRODUCTS -----
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Public read products" ON products FOR SELECT USING (true);
-CREATE POLICY "Auth users manage products" ON products FOR ALL USING (auth.role() = 'authenticated');
 
--- Participants: public insert, admin read/update
+DROP POLICY IF EXISTS "Public read products" ON products;
+DROP POLICY IF EXISTS "Auth users manage products" ON products;
+
+CREATE POLICY "Public read products"
+  ON products FOR SELECT USING (true);
+
+CREATE POLICY "Auth users manage products"
+  ON products FOR ALL USING (auth.role() = 'authenticated');
+
+-- ----- PARTICIPANTS -----
 ALTER TABLE participants ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Public insert participants" ON participants FOR INSERT WITH CHECK (true);
-CREATE POLICY "Auth users read participants" ON participants FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Auth users update participants" ON participants FOR UPDATE USING (auth.role() = 'authenticated');
 
--- Orders: public insert, admin read/update
+DROP POLICY IF EXISTS "Public insert participants" ON participants;
+DROP POLICY IF EXISTS "Public read own participants" ON participants;
+DROP POLICY IF EXISTS "Auth users read participants" ON participants;
+DROP POLICY IF EXISTS "Auth users update participants" ON participants;
+DROP POLICY IF EXISTS "Auth users delete participants" ON participants;
+
+-- Anyone can INSERT (public lucky draw form)
+CREATE POLICY "Public insert participants"
+  ON participants FOR INSERT WITH CHECK (true);
+
+-- Anyone can SELECT their own entry by phone (needed for duplicate check in form)
+CREATE POLICY "Public read participants by phone"
+  ON participants FOR SELECT USING (true);
+
+-- Authenticated admin can update/delete
+CREATE POLICY "Auth users update participants"
+  ON participants FOR UPDATE USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Auth users delete participants"
+  ON participants FOR DELETE USING (auth.role() = 'authenticated');
+
+-- ----- ORDERS -----
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Public insert orders" ON orders FOR INSERT WITH CHECK (true);
-CREATE POLICY "Auth users manage orders" ON orders FOR ALL USING (auth.role() = 'authenticated');
 
--- Winners: public read published, admin all
+DROP POLICY IF EXISTS "Public insert orders" ON orders;
+DROP POLICY IF EXISTS "Auth users manage orders" ON orders;
+
+-- Anyone can insert an order (WhatsApp click logging)
+CREATE POLICY "Public insert orders"
+  ON orders FOR INSERT WITH CHECK (true);
+
+-- Admin can read/update/delete orders
+CREATE POLICY "Auth users manage orders"
+  ON orders FOR ALL USING (auth.role() = 'authenticated');
+
+-- ----- WINNERS -----
 ALTER TABLE winners ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Public read published winners" ON winners FOR SELECT USING (is_published = true);
-CREATE POLICY "Auth users manage winners" ON winners FOR ALL USING (auth.role() = 'authenticated');
 
--- Settings: public read, admin write
+DROP POLICY IF EXISTS "Public read published winners" ON winners;
+DROP POLICY IF EXISTS "Auth users manage winners" ON winners;
+
+-- Public can read published winners only
+CREATE POLICY "Public read published winners"
+  ON winners FOR SELECT USING (is_published = true);
+
+-- Admin can manage all winners
+CREATE POLICY "Auth users manage winners"
+  ON winners FOR ALL USING (auth.role() = 'authenticated');
+
+-- ----- SETTINGS -----
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Public read settings" ON settings FOR SELECT USING (true);
-CREATE POLICY "Auth users update settings" ON settings FOR UPDATE USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Public read settings" ON settings;
+DROP POLICY IF EXISTS "Auth users update settings" ON settings;
+
+CREATE POLICY "Public read settings"
+  ON settings FOR SELECT USING (true);
+
+CREATE POLICY "Auth users update settings"
+  ON settings FOR UPDATE USING (auth.role() = 'authenticated');
+
+-- =============================================
+-- STORAGE BUCKET POLICIES
+-- Run these in Supabase SQL Editor after creating buckets
+-- =============================================
+
+-- screenshots bucket: allow public INSERT (for lucky draw form)
+-- Run this AFTER creating the 'screenshots' bucket in Storage dashboard
+
+INSERT INTO storage.buckets (id, name, public)
+  VALUES ('screenshots', 'screenshots', false)
+  ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO storage.buckets (id, name, public)
+  VALUES ('shipping-proofs', 'shipping-proofs', false)
+  ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO storage.buckets (id, name, public)
+  VALUES ('product-images', 'product-images', true)
+  ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO storage.buckets (id, name, public)
+  VALUES ('product-videos', 'product-videos', true)
+  ON CONFLICT (id) DO NOTHING;
+
+-- Storage policy: anyone can upload screenshots (lucky draw form)
+DROP POLICY IF EXISTS "Public upload screenshots" ON storage.objects;
+CREATE POLICY "Public upload screenshots"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'screenshots');
+
+-- Storage policy: admin can read screenshots
+DROP POLICY IF EXISTS "Auth read screenshots" ON storage.objects;
+CREATE POLICY "Auth read screenshots"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'screenshots' AND auth.role() = 'authenticated');
+
+-- Storage policy: admin can upload shipping proofs
+DROP POLICY IF EXISTS "Auth upload shipping proofs" ON storage.objects;
+CREATE POLICY "Auth upload shipping proofs"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'shipping-proofs' AND auth.role() = 'authenticated');
+
+-- Storage policy: admin can read shipping proofs
+DROP POLICY IF EXISTS "Auth read shipping proofs" ON storage.objects;
+CREATE POLICY "Auth read shipping proofs"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'shipping-proofs' AND auth.role() = 'authenticated');
+
+-- Storage policy: admin can upload product images
+DROP POLICY IF EXISTS "Auth upload product images" ON storage.objects;
+CREATE POLICY "Auth upload product images"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'product-images' AND auth.role() = 'authenticated');
+
+-- Storage policy: anyone can read product images (public bucket)
+DROP POLICY IF EXISTS "Public read product images" ON storage.objects;
+CREATE POLICY "Public read product images"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'product-images');
+
+-- Storage policy: admin can upload product videos
+DROP POLICY IF EXISTS "Auth upload product videos" ON storage.objects;
+CREATE POLICY "Auth upload product videos"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'product-videos' AND auth.role() = 'authenticated');
+
+-- Storage policy: anyone can read product videos (public bucket)
+DROP POLICY IF EXISTS "Public read product videos" ON storage.objects;
+CREATE POLICY "Public read product videos"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'product-videos');
 
 -- =============================================
 -- UPDATED_AT TRIGGER
@@ -139,9 +252,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS products_updated_at ON products;
 CREATE TRIGGER products_updated_at BEFORE UPDATE ON products
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS orders_updated_at ON orders;
 CREATE TRIGGER orders_updated_at BEFORE UPDATE ON orders
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
@@ -149,7 +264,7 @@ CREATE TRIGGER orders_updated_at BEFORE UPDATE ON orders
 -- SAMPLE DATA (optional - remove in production)
 -- =============================================
 INSERT INTO products (name, description, price, type, stock, images, is_featured) VALUES
-  ('Dragon Miniature', 'Highly detailed 3D printed dragon miniature, perfect for tabletop gaming or display. Printed in premium PLA filament with stunning detail.', 35.00, 'SELL', 'in', ARRAY['https://placehold.co/600x600/f5e0c0/8b6340?text=🐉'], true),
-  ('Nekoko Phone Stand', 'Ergonomic phone stand designed with kawaii cat ears. Supports all phone sizes. Available in multiple pastel colors.', 18.00, 'SELL', 'in', ARRAY['https://placehold.co/600x600/fce8e8/d95555?text=📱'], true),
-  ('Lucky Vase Set', 'Beautiful geometric vase set — win it FREE! Subscribe to our YouTube channel and join the lucky draw. Pastel colors available.', 0, 'LUCKY_DRAW', 'in', ARRAY['https://placehold.co/600x600/e8f0e8/3d6b42?text=🏺'], true)
+  ('Dragon Miniature', 'Highly detailed 3D printed dragon miniature, perfect for tabletop gaming or display. Printed in premium PLA filament with stunning detail.', 350.00, 'SELL', 'in', ARRAY['https://placehold.co/600x600/1e293b/94a3b8?text=Dragon'], true),
+  ('Phone Stand Pro', 'Ergonomic adjustable phone stand, precision printed. Supports all phone sizes and angles. Available in multiple colors.', 180.00, 'SELL', 'in', ARRAY['https://placehold.co/600x600/1e293b/94a3b8?text=Phone+Stand'], true),
+  ('Geometric Vase', 'Beautiful geometric vase — win it FREE! Subscribe to our YouTube channel and join the lucky draw.', 0, 'LUCKY_DRAW', 'in', ARRAY['https://placehold.co/600x600/1e293b/94a3b8?text=Vase'], true)
 ON CONFLICT DO NOTHING;
