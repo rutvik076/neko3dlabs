@@ -40,8 +40,11 @@ export default function AdminProducts() {
         urls.push(url)
       }
       setForm(f => ({ ...f, images: [...(f.images || []), ...urls] }))
-    } catch { alert('Image upload failed. Check your Supabase storage bucket "product-images" is public.') }
-    finally { setUploading(false) }
+    } catch {
+      alert('Image upload failed. Check your Supabase storage bucket "product-images" has public INSERT policy.')
+    } finally {
+      setUploading(false)
+    }
   }
 
   async function handleVideoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -52,8 +55,11 @@ export default function AdminProducts() {
       const path = generateFilePath('videos', file.name)
       const url = await uploadFile(BUCKETS.PRODUCT_VIDEOS, path, file)
       setForm(f => ({ ...f, video_url: url }))
-    } catch { alert('Video upload failed.') }
-    finally { setUploading(false) }
+    } catch {
+      alert('Video upload failed. Check your Supabase storage bucket "product-videos".')
+    } finally {
+      setUploading(false)
+    }
   }
 
   function removeImage(idx: number) {
@@ -122,10 +128,24 @@ export default function AdminProducts() {
                 <tr key={p.id} className="border-b border-steel-100 hover:bg-steel-50 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
+                      {/* Use regular <img> in table row for simplicity and reliability */}
                       <div className="w-10 h-10 rounded-lg overflow-hidden bg-steel-100 flex-shrink-0 border border-steel-200">
-                        {p.images?.[0]
-                          ? <img src={p.images[0]} alt="" className="w-full h-full object-cover" />
-                          : <div className="w-full h-full flex items-center justify-center text-steel-300 text-xs">No img</div>}
+                        {p.images?.[0] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={p.images[0]}
+                            alt={p.name}
+                            className="w-full h-full object-cover"
+                            onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-steel-400">
+                              <rect x="3" y="7" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                              <path d="M3 11l6-4 6 4 6-4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                            </svg>
+                          </div>
+                        )}
                       </div>
                       <span className="font-medium text-graphite-700 max-w-[180px] truncate">{p.name}</span>
                     </div>
@@ -158,6 +178,7 @@ export default function AdminProducts() {
         </div>
       </div>
 
+      {/* Add / Edit Modal */}
       {modal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-xl border border-steel-200 p-6 w-full max-w-lg my-6 shadow-2xl">
@@ -166,82 +187,109 @@ export default function AdminProducts() {
               <h2 className="font-display text-xl font-bold text-graphite-700">{form.id ? 'Edit Product' : 'Add Product'}</h2>
             </div>
             <div className="space-y-4">
+
+              {/* Name */}
               <div>
                 <label className={labelCls}>Product Name *</label>
                 <input value={form.name || ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} />
               </div>
+
+              {/* Description */}
               <div>
                 <label className={labelCls}>Description</label>
                 <textarea value={form.description || ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                   rows={3} className="input-tech resize-none" />
               </div>
+
+              {/* Type + Stock */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Type *</label>
-                  <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as Product['type'] }))}
-                    className={inputCls}>
+                  <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as Product['type'] }))} className={inputCls}>
                     <option value="SELL">SELL</option>
                     <option value="LUCKY_DRAW">LUCKY DRAW (Free)</option>
                   </select>
                 </div>
                 <div>
                   <label className={labelCls}>Stock</label>
-                  <select value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value as Product['stock'] }))}
-                    className={inputCls}>
+                  <select value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value as Product['stock'] }))} className={inputCls}>
                     <option value="in">In Stock</option>
                     <option value="out">Out of Stock</option>
                   </select>
                 </div>
               </div>
+
+              {/* Price — only for SELL */}
               {form.type === 'SELL' && (
                 <div>
                   <label className={labelCls}>Price (₹ INR)</label>
                   <input type="number" min="0" step="1" value={form.price || 0}
-                    onChange={e => setForm(f => ({ ...f, price: parseFloat(e.target.value) }))}
-                    className={inputCls} />
+                    onChange={e => setForm(f => ({ ...f, price: parseFloat(e.target.value) }))} className={inputCls} />
                 </div>
               )}
+
+              {/* Lucky draw fields */}
               {form.type === 'LUCKY_DRAW' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelCls}>Draw End Date</label>
                     <input type="date" value={form.lucky_draw_end || ''}
-                      onChange={e => setForm(f => ({ ...f, lucky_draw_end: e.target.value }))}
-                      className={inputCls} />
+                      onChange={e => setForm(f => ({ ...f, lucky_draw_end: e.target.value }))} className={inputCls} />
                   </div>
                   <div>
                     <label className={labelCls}>Max Participants</label>
                     <input type="number" min="0" value={form.max_participants || 0}
-                      onChange={e => setForm(f => ({ ...f, max_participants: parseInt(e.target.value) }))}
-                      className={inputCls} />
+                      onChange={e => setForm(f => ({ ...f, max_participants: parseInt(e.target.value) }))} className={inputCls} />
                   </div>
                 </div>
               )}
+
+              {/* Image upload */}
               <div>
                 <label className={labelCls}>Product Images</label>
                 <label className="block border-2 border-dashed border-steel-200 rounded-lg p-4 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors bg-steel-50">
-                  <div className="text-xl mb-1">🖼️</div>
-                  <p className="text-xs text-steel-500 font-medium">{uploading ? 'Uploading...' : 'Click to upload images (JPG, PNG, WebP)'}</p>
+                  <div className="text-xl mb-1">{uploading ? '⏳' : '🖼️'}</div>
+                  <p className="text-xs text-steel-500 font-medium">
+                    {uploading ? 'Uploading...' : 'Click to upload images (JPG, PNG, WebP)'}
+                  </p>
                   <input type="file" accept="image/*" multiple onChange={handleImageUpload} disabled={uploading} className="hidden" />
                 </label>
+
+                {/* Image preview grid — use plain <img> tags for reliability in admin */}
                 {(form.images || []).length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
+                  <div className="flex flex-wrap gap-2 mt-3">
                     {(form.images || []).map((img, i) => (
-                      <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-steel-200 group">
-                        <Image src={img} alt="" fill className="object-cover" />
-                        <button onClick={() => removeImage(i)}
-                          className="absolute inset-0 bg-black/60 text-white text-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center font-bold">×</button>
+                      <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-steel-200 group bg-steel-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={img}
+                          alt={`Preview ${i + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={e => {
+                            const el = e.target as HTMLImageElement
+                            el.src = ''
+                            el.style.display = 'none'
+                          }}
+                        />
+                        <button
+                          onClick={() => removeImage(i)}
+                          className="absolute inset-0 bg-black/60 text-white text-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center font-bold"
+                        >×</button>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
+
+              {/* Video upload */}
               <div>
                 <label className={labelCls}>Product Video</label>
                 <div className="space-y-2">
                   <label className="block border-2 border-dashed border-steel-200 rounded-lg p-4 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors bg-steel-50">
-                    <div className="text-xl mb-1">🎬</div>
-                    <p className="text-xs text-steel-500 font-medium">{uploading ? 'Uploading...' : 'Upload video file (MP4, WebM)'}</p>
+                    <div className="text-xl mb-1">{uploading ? '⏳' : '🎬'}</div>
+                    <p className="text-xs text-steel-500 font-medium">
+                      {uploading ? 'Uploading...' : 'Upload video file (MP4, WebM)'}
+                    </p>
                     <input type="file" accept="video/*" onChange={handleVideoUpload} disabled={uploading} className="hidden" />
                   </label>
                   <input
@@ -250,22 +298,32 @@ export default function AdminProducts() {
                     placeholder="OR paste YouTube URL: https://youtube.com/watch?v=..."
                     className={inputCls}
                   />
-                  {form.video_url && <p className="text-xs text-green-600 font-medium truncate">✓ {form.video_url.split('/').pop()}</p>}
+                  {form.video_url && (
+                    <p className="text-xs text-green-600 font-medium truncate">✓ {form.video_url.split('/').pop()}</p>
+                  )}
                 </div>
               </div>
+
+              {/* Featured toggle */}
               <div className="flex items-center gap-2 p-3 bg-steel-50 rounded-lg border border-steel-200">
                 <input type="checkbox" id="featured" checked={form.is_featured || false}
                   onChange={e => setForm(f => ({ ...f, is_featured: e.target.checked }))}
                   className="accent-blue-500 w-4 h-4" />
-                <label htmlFor="featured" className="text-sm text-steel-600 cursor-pointer font-medium">⭐ Mark as Featured</label>
+                <label htmlFor="featured" className="text-sm text-steel-600 cursor-pointer font-medium">
+                  ⭐ Mark as Featured
+                </label>
               </div>
             </div>
+
+            {/* Actions */}
             <div className="flex gap-3 mt-6">
               <button onClick={save} disabled={saving || uploading}
                 className="btn-tech btn-primary flex-1 py-3 text-sm font-semibold disabled:opacity-60">
                 {saving ? 'Saving...' : 'Save Product'}
               </button>
-              <button onClick={() => setModal(false)} className="btn-tech btn-ghost px-6 py-3 text-sm">Cancel</button>
+              <button onClick={() => setModal(false)} className="btn-tech btn-ghost px-6 py-3 text-sm">
+                Cancel
+              </button>
             </div>
           </div>
         </div>

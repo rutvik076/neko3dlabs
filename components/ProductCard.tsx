@@ -7,20 +7,24 @@ interface Props { product: Product; index?: number }
 
 export default function ProductCard({ product: p, index = 0 }: Props) {
   return (
-    <Link href={`/products/${p.id}`}
+    <Link
+      href={`/products/${p.id}`}
       className="card-hover block bg-white rounded-xl border border-steel-200 overflow-hidden group relative"
-      style={{ animationDelay: `${index * 0.04}s` }}>
-
-      {/* Image */}
+      style={{ animationDelay: `${index * 0.04}s` }}
+    >
+      {/* Image container — explicit relative + overflow for next/image fill */}
       <div className="aspect-square bg-steel-100 overflow-hidden relative">
         {p.images?.[0] ? (
           <Image
-            src={p.images[0]} alt={p.name} fill
-            className="object-cover group-hover:scale-103 transition-transform duration-400"
+            src={p.images[0]}
+            alt={p.name}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-steel-100">
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" className="text-steel-300">
+            <svg width="40" height="40" viewBox="0 0 48 48" fill="none" className="text-steel-300">
               <rect x="8" y="16" width="32" height="24" rx="3" stroke="currentColor" strokeWidth="2" fill="none"/>
               <path d="M8 22l16-8 16 8" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
               <rect x="18" y="28" width="12" height="12" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
@@ -56,7 +60,6 @@ export default function ProductCard({ product: p, index = 0 }: Props) {
             </span>
           )}
         </div>
-        {/* Bottom action hint */}
         <div className="mt-2.5 w-full py-1.5 bg-steel-50 border border-steel-200 rounded-md text-xs font-medium text-steel-500 text-center group-hover:bg-blue-500 group-hover:border-blue-500 group-hover:text-white transition-all duration-200">
           View Details →
         </div>

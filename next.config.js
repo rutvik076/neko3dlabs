@@ -1,12 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    // Allow any HTTPS image source - handles Supabase storage, placeholders, and any CDN
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '*.supabase.co',
-        port: '',
-        pathname: '/storage/v1/object/public/**',
+        hostname: '**',
       },
     ],
   },

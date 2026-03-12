@@ -42,9 +42,17 @@ export default async function ProductPage({ params }: Props) {
       <div className="grid md:grid-cols-[1fr_420px] gap-8 lg:gap-12">
         {/* Images */}
         <div>
+          {/* Main image — explicit relative container required for next/image fill */}
           <div className="aspect-square rounded-xl overflow-hidden bg-steel-100 img-frame relative">
             {p.images?.[0] ? (
-              <Image src={p.images[0]} alt={p.name} fill className="object-cover" />
+              <Image
+                src={p.images[0]}
+                alt={p.name}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                priority
+                className="object-cover"
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <svg width="64" height="64" viewBox="0 0 64 64" fill="none" className="text-steel-300">
@@ -59,16 +67,24 @@ export default async function ProductPage({ params }: Props) {
             </div>
           </div>
 
+          {/* Thumbnail strip — use fixed width/height (no fill) */}
           {p.images?.length > 1 && (
             <div className="flex gap-2 mt-3 flex-wrap">
               {p.images.slice(1).map((img: string, i: number) => (
-                <div key={i} className="w-16 h-16 rounded-lg overflow-hidden bg-steel-100 border border-steel-200">
-                  <Image src={img} alt={`${p.name} ${i + 2}`} width={64} height={64} className="object-cover w-full h-full" />
+                <div key={i} className="w-16 h-16 rounded-lg overflow-hidden bg-steel-100 border border-steel-200 relative flex-shrink-0">
+                  <Image
+                    src={img}
+                    alt={`${p.name} view ${i + 2}`}
+                    fill
+                    sizes="64px"
+                    className="object-cover"
+                  />
                 </div>
               ))}
             </div>
           )}
 
+          {/* Video embed */}
           {ytId && (
             <div className="mt-4 rounded-xl overflow-hidden aspect-video border border-steel-200">
               <iframe
@@ -83,14 +99,12 @@ export default async function ProductPage({ params }: Props) {
 
         {/* Info */}
         <div className="fade-up">
-          {/* Type badge */}
           <span className={`inline-flex items-center text-xs font-bold px-3 py-1.5 rounded-md mb-4 uppercase tracking-wide ${p.type === 'LUCKY_DRAW' ? 'tag-lucky' : 'tag-sell'}`}>
             {p.type === 'LUCKY_DRAW' ? '🎲 Free Lucky Draw' : '🛍 For Sale'}
           </span>
 
           <h1 className="font-display text-3xl font-bold text-graphite-700 leading-tight tracking-tight">{p.name}</h1>
 
-          {/* Price */}
           {p.type === 'SELL' ? (
             <div className="mt-3">
               <span className="text-3xl font-bold text-blue-600 font-display">{formatPrice(p.price)}</span>
@@ -103,13 +117,11 @@ export default async function ProductPage({ params }: Props) {
             </div>
           )}
 
-          {/* Stock */}
           <div className="flex items-center gap-2 mt-3">
             <div className={`w-2 h-2 rounded-full pulse-dot ${p.stock === 'in' ? 'bg-green-500' : 'bg-red-400'}`} />
             <span className="text-sm text-steel-500 font-medium">{p.stock === 'in' ? 'In Stock' : 'Out of Stock'}</span>
           </div>
 
-          {/* Lucky draw meta */}
           {p.type === 'LUCKY_DRAW' && (
             <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-xl space-y-1.5">
               {count !== null && (
@@ -134,9 +146,13 @@ export default async function ProductPage({ params }: Props) {
                 Out of Stock
               </button>
             ) : p.type === 'SELL' ? (
-              <a href={waUrl} target="_blank" rel="noreferrer"
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noreferrer"
                 className="btn-tech w-full py-4 bg-[#25d366] text-white text-base block text-center font-semibold"
-                style={{ boxShadow: '0 4px 20px rgba(37,211,102,0.3)' }}>
+                style={{ boxShadow: '0 4px 20px rgba(37,211,102,0.3)' }}
+              >
                 💬 Buy on WhatsApp
               </a>
             ) : (
