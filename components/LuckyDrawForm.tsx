@@ -7,12 +7,13 @@ import { useRouter } from 'next/navigation'
 
 interface Props { product: Product }
 
+type Step = 'idle' | 'checking' | 'uploading' | 'saving' | 'done'
+
 export default function LuckyDrawForm({ product }: Props) {
   const router = useRouter()
   const [form, setForm] = useState({ name: '', phone: '', address: '', agree: false })
   const [file, setFile] = useState<File | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [done, setDone] = useState(false)
+  const [step, setStep] = useState<Step>('idle')
   const [error, setError] = useState('')
   const sb = supabase as any
 
@@ -20,79 +21,102 @@ export default function LuckyDrawForm({ product }: Props) {
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm(s => ({ ...s, [k]: e.target.value }))
 
+  const stepLabel: Record<Step, string> = {
+    idle:      '🎲 Submit Entry — FREE',
+    checking:  'Checking...',
+    uploading: 'Uploading screenshot...',
+    saving:    'Saving entry...',
+    done:      'Done!',
+  }
+
   async function submit() {
     setError('')
-    if (!form.name.trim() || !form.phone.trim() || !form.address.trim()) {
-      setError('Please fill all required fields.')
-      return
-    }
-    if (!file) {
-      setError('Please upload your subscription screenshot.')
-      return
-    }
-    if (!form.agree) {
-      setError('Please agree to the terms to continue.')
-      return
-    }
 
-    setSubmitting(true)
+    // ── Validation
+    if (!form.name.trim())    { setError('Please enter your full name.'); return }
+    if (!form.phone.trim())   { setError('Please enter your phone number.'); return }
+    if (!form.address.trim()) { setError('Please enter your delivery address.'); return }
+    if (!file)                { setError('Please upload your subscription screenshot.'); return }
+    if (!form.agree)          { setError('Please agree to the terms to continue.'); return }
+
     try {
-      // ── Duplicate check: use .maybeSingle() instead of .single()
-      // .single() throws an error if no row found; .maybeSingle() returns null safely
-      const { data: existing, error: checkError } = await sb
+      // ── Step 1: Check for duplicate phone
+      setStep('checking')
+      const { data: existing } = await sb
         .from('participants')
         .select('id')
         .eq('product_id', product.id)
         .eq('phone', form.phone.trim())
-        .maybeSingle()
+        .maybeSingle()             // returns null if no match — never throws
 
-      if (checkError) {
-        // RLS or network error on the check — log and continue rather than block
-        console.warn('Duplicate check error (non-blocking):', checkError.message)
-      } else if (existing) {
+      if (existing) {
         setError('This phone number has already entered this draw.')
-        setSubmitting(false)
+        setStep('idle')
         return
       }
 
-      // ── Upload screenshot to Supabase Storage
+      // ── Step 2: Upload screenshot to Supabase Storage (screenshots bucket — now public)
+      setStep('uploading')
       const path = generateFilePath('screenshots', file.name)
-      const screenshotUrl = await uploadFile(BUCKETS.SCREENSHOTS, path, file)
+      let screenshotUrl = ''
+      try {
+        screenshotUrl = await uploadFile(BUCKETS.SCREENSHOTS, path, file)
+      } catch (uploadErr: unknown) {
+        const msg = uploadErr instanceof Error ? uploadErr.message : String(uploadErr)
+        // Provide a specific actionable error for the most common cause
+        if (msg.includes('row-level security') || msg.includes('policy') || msg.includes('403')) {
+          throw new Error(
+            'Screenshot upload blocked by Supabase storage policy. ' +
+            'Please run the latest schema.sql in your Supabase SQL Editor to fix storage permissions.'
+          )
+        }
+        throw new Error('Screenshot upload failed: ' + msg)
+      }
 
-      // ── Insert participant row
+      // ── Step 3: Insert participant row
+      setStep('saving')
       const { error: insertError } = await sb.from('participants').insert({
-        product_id: product.id,
-        name: form.name.trim(),
-        phone: form.phone.trim(),
-        address: form.address.trim(),
-        screenshot_url: screenshotUrl,
+        product_id:      product.id,
+        name:            form.name.trim(),
+        phone:           form.phone.trim(),
+        address:         form.address.trim(),
+        screenshot_url:  screenshotUrl,
         agreed_to_share: form.agree,
-        status: 'pending',
+        status:          'pending',
       })
 
       if (insertError) {
-        // Surface the exact Supabase error message so it's easy to debug
+        if (insertError.message.includes('row-level security') || insertError.message.includes('policy')) {
+          throw new Error(
+            'Database insert blocked by RLS policy. ' +
+            'Please run the latest schema.sql in your Supabase SQL Editor.'
+          )
+        }
+        if (insertError.message.includes('unique') || insertError.message.includes('duplicate')) {
+          throw new Error('This phone number has already entered this draw.')
+        }
         throw new Error(insertError.message)
       }
 
-      setDone(true)
+      setStep('done')
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown error. Please try again.'
+      const msg = err instanceof Error ? err.message : 'Unexpected error. Please try again.'
       setError(msg)
-    } finally {
-      setSubmitting(false)
+      setStep('idle')
     }
   }
 
-  if (done) {
+  const submitting = step !== 'idle' && step !== 'done'
+
+  if (step === 'done') {
     return (
       <div className="card-tech p-8 text-center border-2 border-green-400">
-        <div className="w-14 h-14 mx-auto mb-4 bg-green-50 rounded-xl border border-green-200 flex items-center justify-center text-3xl">
+        <div className="w-16 h-16 mx-auto mb-4 bg-green-50 rounded-2xl border border-green-200 flex items-center justify-center text-3xl">
           ✓
         </div>
         <h3 className="font-display text-xl font-bold text-graphite-700">Entry Submitted!</h3>
         <p className="text-steel-500 mt-2 text-sm leading-relaxed">
-          Your entry is pending admin approval.<br />Good luck! 🍀
+          Your entry is pending admin approval.<br />We&apos;ll contact you if you win. Good luck! 🍀
         </p>
         <button
           onClick={() => router.push('/')}
@@ -114,6 +138,8 @@ export default function LuckyDrawForm({ product }: Props) {
       </div>
 
       <div className="space-y-4">
+
+        {/* Name */}
         <div>
           <label className="block text-xs font-semibold text-steel-500 mb-1.5 uppercase tracking-wide">
             Full Name *
@@ -123,9 +149,11 @@ export default function LuckyDrawForm({ product }: Props) {
             onChange={handleField('name')}
             placeholder="Your full name"
             className="input-tech"
+            disabled={submitting}
           />
         </div>
 
+        {/* Phone */}
         <div>
           <label className="block text-xs font-semibold text-steel-500 mb-1.5 uppercase tracking-wide">
             Phone Number *
@@ -136,9 +164,11 @@ export default function LuckyDrawForm({ product }: Props) {
             placeholder="+91 98765 43210"
             type="tel"
             className="input-tech"
+            disabled={submitting}
           />
         </div>
 
+        {/* Address */}
         <div>
           <label className="block text-xs font-semibold text-steel-500 mb-1.5 uppercase tracking-wide">
             Delivery Address *
@@ -149,45 +179,61 @@ export default function LuckyDrawForm({ product }: Props) {
             rows={3}
             placeholder="Your full delivery address..."
             className="input-tech resize-none"
+            disabled={submitting}
           />
         </div>
 
+        {/* Screenshot upload */}
         <div>
           <label className="block text-xs font-semibold text-steel-500 mb-1.5 uppercase tracking-wide">
             Subscription Screenshot *
           </label>
-          <label className="block border-2 border-dashed border-steel-200 rounded-lg p-5 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors bg-steel-50">
-            <div className="text-2xl mb-1.5">{file ? '✓' : '📸'}</div>
-            <p className="text-xs text-steel-500 font-medium">
-              {file ? file.name : 'Click to upload screenshot of your subscription'}
+          <label className={`block border-2 border-dashed rounded-lg p-5 text-center transition-colors bg-steel-50
+            ${submitting ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-blue-400 hover:bg-blue-50/50'}
+            ${file ? 'border-green-400 bg-green-50/30' : 'border-steel-200'}`}
+          >
+            <div className="text-2xl mb-1.5">{file ? '✅' : '📸'}</div>
+            <p className="text-xs text-steel-600 font-semibold">
+              {file ? file.name : 'Click to upload your subscription screenshot'}
             </p>
-            <p className="text-xs text-steel-400 mt-1">JPG, PNG, WebP accepted</p>
+            <p className="text-xs text-steel-400 mt-1">JPG, PNG, WebP — max 10MB</p>
             <input
               type="file"
               accept="image/*"
-              onChange={e => setFile(e.target.files?.[0] || null)}
+              onChange={e => { setFile(e.target.files?.[0] || null); setError('') }}
               className="hidden"
+              disabled={submitting}
             />
           </label>
         </div>
 
+        {/* Terms checkbox */}
         <label className="flex items-start gap-3 cursor-pointer p-3 bg-steel-50 rounded-lg border border-steel-200 hover:border-blue-300 transition-colors">
           <input
             type="checkbox"
             checked={form.agree}
             onChange={e => setForm(s => ({ ...s, agree: e.target.checked }))}
             className="mt-0.5 accent-blue-500 w-4 h-4 flex-shrink-0"
+            disabled={submitting}
           />
           <span className="text-xs text-steel-500 leading-relaxed">
             I agree to share the product on my social media if I win this lucky draw.
           </span>
         </label>
 
-        {/* Error display — shown inline instead of alert() */}
+        {/* Error message */}
         {error && (
-          <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <span className="text-red-500 text-sm mt-0.5 flex-shrink-0">⚠</span>
-            <p className="text-red-600 text-sm leading-relaxed">{error}</p>
+          <div className="flex items-start gap-2.5 p-3.5 bg-red-50 border border-red-200 rounded-lg">
+            <span className="text-red-500 text-sm flex-shrink-0 mt-0.5">⚠</span>
+            <p className="text-red-700 text-sm leading-relaxed">{error}</p>
+          </div>
+        )}
+
+        {/* Progress indicator */}
+        {submitting && (
+          <div className="flex items-center gap-2.5 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+            <p className="text-blue-700 text-sm font-medium">{stepLabel[step]}</p>
           </div>
         )}
       </div>
@@ -195,9 +241,9 @@ export default function LuckyDrawForm({ product }: Props) {
       <button
         onClick={submit}
         disabled={submitting}
-        className="btn-tech btn-accent w-full mt-5 py-3.5 text-sm font-semibold disabled:opacity-60"
+        className="btn-tech btn-accent w-full mt-5 py-4 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {submitting ? 'Submitting...' : '🎲 Submit Entry — FREE'}
+        {stepLabel[step]}
       </button>
     </div>
   )
