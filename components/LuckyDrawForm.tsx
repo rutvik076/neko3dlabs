@@ -6,7 +6,6 @@ import { generateFilePath } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 
 interface Props { product: Product }
-
 type Step = 'idle' | 'checking' | 'uploading' | 'saving' | 'done'
 
 export default function LuckyDrawForm({ product }: Props) {
@@ -32,7 +31,7 @@ export default function LuckyDrawForm({ product }: Props) {
   async function submit() {
     setError('')
 
-    // ── Validation
+    // ── Client validation
     if (!form.name.trim())    { setError('Please enter your full name.'); return }
     if (!form.phone.trim())   { setError('Please enter your phone number.'); return }
     if (!form.address.trim()) { setError('Please enter your delivery address.'); return }
@@ -40,14 +39,24 @@ export default function LuckyDrawForm({ product }: Props) {
     if (!form.agree)          { setError('Please agree to the terms to continue.'); return }
 
     try {
-      // ── Step 1: Check for duplicate phone
       setStep('checking')
+
+      // ── Layer 2: Browser/device fingerprint check
+      // Prevents same browser from entering twice even with a different phone number
+      const deviceKey = `entered_draw_${product.id}`
+      if (typeof window !== 'undefined' && localStorage.getItem(deviceKey)) {
+        setError('You have already entered this draw from this device.')
+        setStep('idle')
+        return
+      }
+
+      // ── Layer 1: Phone number duplicate check (backed by DB unique index)
       const { data: existing } = await sb
         .from('participants')
         .select('id')
         .eq('product_id', product.id)
         .eq('phone', form.phone.trim())
-        .maybeSingle()             // returns null if no match — never throws
+        .maybeSingle()   // returns null if not found — never throws
 
       if (existing) {
         setError('This phone number has already entered this draw.')
@@ -55,7 +64,7 @@ export default function LuckyDrawForm({ product }: Props) {
         return
       }
 
-      // ── Step 2: Upload screenshot to Supabase Storage (screenshots bucket — now public)
+      // ── Upload screenshot
       setStep('uploading')
       const path = generateFilePath('screenshots', file.name)
       let screenshotUrl = ''
@@ -63,17 +72,16 @@ export default function LuckyDrawForm({ product }: Props) {
         screenshotUrl = await uploadFile(BUCKETS.SCREENSHOTS, path, file)
       } catch (uploadErr: unknown) {
         const msg = uploadErr instanceof Error ? uploadErr.message : String(uploadErr)
-        // Provide a specific actionable error for the most common cause
         if (msg.includes('row-level security') || msg.includes('policy') || msg.includes('403')) {
           throw new Error(
-            'Screenshot upload blocked by Supabase storage policy. ' +
-            'Please run the latest schema.sql in your Supabase SQL Editor to fix storage permissions.'
+            'Screenshot upload blocked by storage policy. ' +
+            'Please run the latest schema.sql in your Supabase SQL Editor.'
           )
         }
         throw new Error('Screenshot upload failed: ' + msg)
       }
 
-      // ── Step 3: Insert participant row
+      // ── Insert participant row into DB
       setStep('saving')
       const { error: insertError } = await sb.from('participants').insert({
         product_id:      product.id,
@@ -86,16 +94,18 @@ export default function LuckyDrawForm({ product }: Props) {
       })
 
       if (insertError) {
-        if (insertError.message.includes('row-level security') || insertError.message.includes('policy')) {
-          throw new Error(
-            'Database insert blocked by RLS policy. ' +
-            'Please run the latest schema.sql in your Supabase SQL Editor.'
-          )
-        }
         if (insertError.message.includes('unique') || insertError.message.includes('duplicate')) {
           throw new Error('This phone number has already entered this draw.')
         }
+        if (insertError.message.includes('row-level security') || insertError.message.includes('policy')) {
+          throw new Error('Database insert blocked. Please run the latest schema.sql.')
+        }
         throw new Error(insertError.message)
+      }
+
+      // ── Layer 2 continued: Mark this device as entered so they can't re-submit
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(deviceKey, '1')
       }
 
       setStep('done')
@@ -111,17 +121,12 @@ export default function LuckyDrawForm({ product }: Props) {
   if (step === 'done') {
     return (
       <div className="card-tech p-8 text-center border-2 border-green-400">
-        <div className="w-16 h-16 mx-auto mb-4 bg-green-50 rounded-2xl border border-green-200 flex items-center justify-center text-3xl">
-          ✓
-        </div>
+        <div className="w-16 h-16 mx-auto mb-4 bg-green-50 rounded-2xl border border-green-200 flex items-center justify-center text-3xl">✓</div>
         <h3 className="font-display text-xl font-bold text-graphite-700">Entry Submitted!</h3>
         <p className="text-steel-500 mt-2 text-sm leading-relaxed">
           Your entry is pending admin approval.<br />We&apos;ll contact you if you win. Good luck! 🍀
         </p>
-        <button
-          onClick={() => router.push('/')}
-          className="btn-tech btn-primary inline-flex mt-5 px-6 py-2.5 text-sm"
-        >
+        <button onClick={() => router.push('/')} className="btn-tech btn-primary inline-flex mt-5 px-6 py-2.5 text-sm">
           ← Back to Shop
         </button>
       </div>
@@ -138,90 +143,45 @@ export default function LuckyDrawForm({ product }: Props) {
       </div>
 
       <div className="space-y-4">
-
-        {/* Name */}
         <div>
-          <label className="block text-xs font-semibold text-steel-500 mb-1.5 uppercase tracking-wide">
-            Full Name *
-          </label>
-          <input
-            value={form.name}
-            onChange={handleField('name')}
-            placeholder="Your full name"
-            className="input-tech"
-            disabled={submitting}
-          />
+          <label className="block text-xs font-semibold text-steel-500 mb-1.5 uppercase tracking-wide">Full Name *</label>
+          <input value={form.name} onChange={handleField('name')} placeholder="Your full name" className="input-tech" disabled={submitting} />
         </div>
 
-        {/* Phone */}
         <div>
-          <label className="block text-xs font-semibold text-steel-500 mb-1.5 uppercase tracking-wide">
-            Phone Number *
-          </label>
-          <input
-            value={form.phone}
-            onChange={handleField('phone')}
-            placeholder="+91 98765 43210"
-            type="tel"
-            className="input-tech"
-            disabled={submitting}
-          />
+          <label className="block text-xs font-semibold text-steel-500 mb-1.5 uppercase tracking-wide">Phone Number *</label>
+          <input value={form.phone} onChange={handleField('phone')} placeholder="+91 98765 43210" type="tel" className="input-tech" disabled={submitting} />
         </div>
 
-        {/* Address */}
         <div>
-          <label className="block text-xs font-semibold text-steel-500 mb-1.5 uppercase tracking-wide">
-            Delivery Address *
-          </label>
-          <textarea
-            value={form.address}
-            onChange={handleField('address')}
-            rows={3}
-            placeholder="Your full delivery address..."
-            className="input-tech resize-none"
-            disabled={submitting}
-          />
+          <label className="block text-xs font-semibold text-steel-500 mb-1.5 uppercase tracking-wide">Delivery Address *</label>
+          <textarea value={form.address} onChange={handleField('address')} rows={3}
+            placeholder="Your full delivery address..." className="input-tech resize-none" disabled={submitting} />
         </div>
 
-        {/* Screenshot upload */}
         <div>
-          <label className="block text-xs font-semibold text-steel-500 mb-1.5 uppercase tracking-wide">
-            Subscription Screenshot *
-          </label>
+          <label className="block text-xs font-semibold text-steel-500 mb-1.5 uppercase tracking-wide">Subscription Screenshot *</label>
           <label className={`block border-2 border-dashed rounded-lg p-5 text-center transition-colors bg-steel-50
             ${submitting ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-blue-400 hover:bg-blue-50/50'}
-            ${file ? 'border-green-400 bg-green-50/30' : 'border-steel-200'}`}
-          >
+            ${file ? 'border-green-400 bg-green-50/30' : 'border-steel-200'}`}>
             <div className="text-2xl mb-1.5">{file ? '✅' : '📸'}</div>
-            <p className="text-xs text-steel-600 font-semibold">
-              {file ? file.name : 'Click to upload your subscription screenshot'}
-            </p>
+            <p className="text-xs text-steel-600 font-semibold">{file ? file.name : 'Click to upload your subscription screenshot'}</p>
             <p className="text-xs text-steel-400 mt-1">JPG, PNG, WebP — max 10MB</p>
-            <input
-              type="file"
-              accept="image/*"
+            <input type="file" accept="image/*"
               onChange={e => { setFile(e.target.files?.[0] || null); setError('') }}
-              className="hidden"
-              disabled={submitting}
-            />
+              className="hidden" disabled={submitting} />
           </label>
         </div>
 
-        {/* Terms checkbox */}
         <label className="flex items-start gap-3 cursor-pointer p-3 bg-steel-50 rounded-lg border border-steel-200 hover:border-blue-300 transition-colors">
-          <input
-            type="checkbox"
-            checked={form.agree}
+          <input type="checkbox" checked={form.agree}
             onChange={e => setForm(s => ({ ...s, agree: e.target.checked }))}
-            className="mt-0.5 accent-blue-500 w-4 h-4 flex-shrink-0"
-            disabled={submitting}
-          />
+            className="mt-0.5 accent-blue-500 w-4 h-4 flex-shrink-0" disabled={submitting} />
           <span className="text-xs text-steel-500 leading-relaxed">
             I agree to share the product on my social media if I win this lucky draw.
           </span>
         </label>
 
-        {/* Error message */}
         {error && (
           <div className="flex items-start gap-2.5 p-3.5 bg-red-50 border border-red-200 rounded-lg">
             <span className="text-red-500 text-sm flex-shrink-0 mt-0.5">⚠</span>
@@ -229,7 +189,6 @@ export default function LuckyDrawForm({ product }: Props) {
           </div>
         )}
 
-        {/* Progress indicator */}
         {submitting && (
           <div className="flex items-center gap-2.5 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
@@ -238,11 +197,8 @@ export default function LuckyDrawForm({ product }: Props) {
         )}
       </div>
 
-      <button
-        onClick={submit}
-        disabled={submitting}
-        className="btn-tech btn-accent w-full mt-5 py-4 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-      >
+      <button onClick={submit} disabled={submitting}
+        className="btn-tech btn-accent w-full mt-5 py-4 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
         {stepLabel[step]}
       </button>
     </div>
