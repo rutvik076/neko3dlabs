@@ -23,7 +23,7 @@ export default async function LuckyPage({ searchParams }: Props) {
   const steps = [
     { n: '01', title: 'Subscribe', desc: 'Subscribe to our YouTube channel to be eligible.', href: ytUrl, cta: 'Subscribe Now →' },
     { n: '02', title: 'Like & Share', desc: 'Like the product video and share it on your social media.' },
-    { n: '03', title: 'Screenshot', desc: 'Take a screenshot clearly showing your subscription.' },
+    { n: '03', title: 'Screenshot', desc: 'Take a screenshot clearly showing your subscribed status.' },
     { n: '04', title: 'Register', desc: 'Fill the form below with your details and upload proof.' },
   ]
 
