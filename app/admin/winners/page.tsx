@@ -1,67 +1,67 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase, BUCKETS, uploadFile } from '@/lib/supabase'
+import { db } from '@/lib/firebase'
+import { uploadToCloudinary, FOLDERS } from '@/lib/cloudinary'
+import { collection, getDocs, addDoc, updateDoc, doc, orderBy, query, where } from 'firebase/firestore'
 import type { Winner, Product, Participant } from '@/lib/types'
-import { generateFilePath, formatDate } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 
 export default function AdminWinners() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [participants, setParticipants] = useState<Participant[]>([])
-  const [winners, setWinners] = useState<Winner[]>([])
-  const [picking, setPicking] = useState<string | null>(null)
-  const [uploadingProof, setUploadingProof] = useState<string | null>(null)
-  const sb = supabase as any
+  const [products,      setProducts]      = useState<Product[]>([])
+  const [participants,  setParticipants]  = useState<Participant[]>([])
+  const [winners,       setWinners]       = useState<Winner[]>([])
+  const [picking,       setPicking]       = useState<string | null>(null)
+  const [uploadingProof,setUploadingProof]= useState<string | null>(null)
 
   async function load() {
-    const [{ data: prods }, { data: parts }, { data: wins }] = await Promise.all([
-      sb.from('products').select('*').eq('type', 'LUCKY_DRAW'),
-      sb.from('participants').select('*').eq('status', 'approved'),
-      sb.from('winners').select('*').order('created_at', { ascending: false }),
+    const [prodSnap, partSnap, winSnap] = await Promise.all([
+      getDocs(query(collection(db, 'products'),     where('type', '==', 'LUCKY_DRAW'))),
+      getDocs(query(collection(db, 'participants'), where('status', '==', 'approved'))),
+      getDocs(query(collection(db, 'winners'),      orderBy('created_at', 'desc'))),
     ])
-    setProducts((prods as Product[]) || [])
-    setParticipants((parts as Participant[]) || [])
-    setWinners((wins as Winner[]) || [])
+    setProducts(    prodSnap.docs.map(d => ({ id: d.id, ...d.data() } as Product)))
+    setParticipants(partSnap.docs.map(d => ({ id: d.id, ...d.data() } as Participant)))
+    setWinners(     winSnap.docs.map(d => ({ id: d.id, ...d.data() } as Winner)))
   }
   useEffect(() => { load() }, [])
 
   async function pickWinner(productId: string) {
-    const eligible = participants.filter(p => p.product_id === productId)
+    const eligible   = participants.filter(p => p.product_id === productId)
     const alreadyWon = winners.some(w => w.product_id === productId)
-    if (alreadyWon) { alert('A winner has already been picked.'); return }
-    if (eligible.length === 0) { alert('No approved participants for this product.'); return }
+    if (alreadyWon)           { alert('A winner has already been picked.'); return }
+    if (eligible.length === 0){ alert('No approved participants for this product.'); return }
     if (!confirm(`Pick a random winner from ${eligible.length} participants?`)) return
 
     setPicking(productId)
-    const arr = new Uint32Array(1)
+    const arr    = new Uint32Array(1)
     window.crypto.getRandomValues(arr)
     const winner = eligible[arr[0] % eligible.length]
-
-    await sb.from('winners').insert({
-      product_id: productId,
+    await addDoc(collection(db, 'winners'), {
+      product_id:     productId,
       participant_id: winner.id,
-      winner_name: winner.name,
-      winner_phone: winner.phone,
-      announce_date: new Date().toISOString().split('T')[0],
-      is_published: true,
+      winner_name:    winner.name,
+      winner_phone:   winner.phone,
+      announce_date:  new Date().toISOString().split('T')[0],
+      is_published:   true,
+      created_at:     new Date().toISOString(),
     })
-    setPicking(null)
-    load()
+    setPicking(null); load()
     alert(`🎉 Winner: ${winner.name} (${winner.phone})`)
   }
 
   async function uploadShippingProof(winnerId: string, file: File) {
     setUploadingProof(winnerId)
     try {
-      const path = generateFilePath('shipping', file.name)
-      const url = await uploadFile(BUCKETS.SHIPPING_PROOFS, path, file)
-      await sb.from('winners').update({ shipping_proof_url: url }).eq('id', winnerId)
+      const url = await uploadToCloudinary(file, FOLDERS.SHIPPING_PROOFS)
+      await updateDoc(doc(db, 'winners', winnerId), { shipping_proof_url: url })
       load()
-    } catch { alert('Upload failed') }
-    finally { setUploadingProof(null) }
+    } catch (err: unknown) {
+      alert('Upload failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    } finally { setUploadingProof(null) }
   }
 
   async function togglePublish(id: string, current: boolean) {
-    await sb.from('winners').update({ is_published: !current }).eq('id', id)
+    await updateDoc(doc(db, 'winners', id), { is_published: !current })
     setWinners(ws => ws.map(w => w.id === id ? { ...w, is_published: !current } : w))
   }
 
@@ -78,7 +78,7 @@ export default function AdminWinners() {
         <div className="space-y-3">
           {products.map(p => {
             const approved = participants.filter(pt => pt.product_id === p.id)
-            const winner = winners.find(w => w.product_id === p.id)
+            const winner   = winners.find(w => w.product_id === p.id)
             return (
               <div key={p.id} className="flex items-center gap-4 flex-wrap p-4 bg-steel-50 border border-steel-200 rounded-xl">
                 <div className="flex-1 min-w-0">
@@ -106,11 +106,9 @@ export default function AdminWinners() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-steel-50 border-b border-steel-200">
-              <tr>
-                {['Winner', 'Phone', 'Product', 'Date', 'Published', 'Shipping', 'Actions'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-steel-500 font-semibold text-xs uppercase tracking-wide">{h}</th>
-                ))}
-              </tr>
+              <tr>{['Winner','Phone','Product','Date','Published','Shipping','Actions'].map(h => (
+                <th key={h} className="text-left px-4 py-3 text-steel-500 font-semibold text-xs uppercase tracking-wide">{h}</th>
+              ))}</tr>
             </thead>
             <tbody>
               {winners.length === 0
@@ -125,7 +123,7 @@ export default function AdminWinners() {
                       <td className="px-4 py-3 text-steel-400 text-xs whitespace-nowrap">{formatDate(w.announce_date)}</td>
                       <td className="px-4 py-3">
                         <button onClick={() => togglePublish(w.id, w.is_published)}
-                          className={`btn-tech px-3 py-1 text-xs ${w.is_published ? 'tag-approved' : 'tag-cancelled'} font-semibold`}>
+                          className={`btn-tech px-3 py-1 text-xs font-semibold ${w.is_published ? 'tag-approved' : 'tag-cancelled'}`}>
                           {w.is_published ? '✓ Public' : '✗ Hidden'}
                         </button>
                       </td>
@@ -141,9 +139,7 @@ export default function AdminWinners() {
                       </td>
                       <td className="px-4 py-3">
                         <a href={`https://wa.me/${w.winner_phone}`} target="_blank" rel="noreferrer"
-                          className="btn-tech px-3 py-1.5 text-xs bg-[#25d366]/10 text-[#128c7e] border border-[#25d366]/30 hover:bg-[#25d366]/20">
-                          WA
-                        </a>
+                          className="btn-tech px-3 py-1.5 text-xs bg-[#25d366]/10 text-[#128c7e] border border-[#25d366]/30 hover:bg-[#25d366]/20">WA</a>
                       </td>
                     </tr>
                   )

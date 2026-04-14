@@ -1,22 +1,24 @@
-import { supabase } from '@/lib/supabase'
+'use client'
+import { useEffect, useState } from 'react'
+import { getAll, where, orderBy } from '@/lib/firebase'
 import type { Winner, Product } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 
-export const revalidate = 60
+export default function WinnersPage() {
+  const [winners,    setWinners]    = useState<Winner[]>([])
+  const [productMap, setProductMap] = useState<Record<string, Partial<Product>>>({})
+  const [loading,    setLoading]    = useState(true)
 
-export default async function WinnersPage() {
-  const sb = supabase as any
-  const { data: winners } = await sb
-    .from('winners')
-    .select('*')
-    .eq('is_published', true)
-    .order('created_at', { ascending: false })
-
-  const { data: products } = await sb.from('products').select('id, name, images')
-
-  const ws = (winners as Winner[]) || []
-  const ps = (products as Partial<Product>[]) || []
-  const productMap = Object.fromEntries(ps.map((p: Partial<Product>) => [p.id!, p]))
+  useEffect(() => {
+    Promise.all([
+      getAll<Winner>('winners',   [where('is_published', '==', true), orderBy('created_at', 'desc')]),
+      getAll<Product>('products', []),
+    ]).then(([ws, ps]) => {
+      setWinners(ws)
+      setProductMap(Object.fromEntries(ps.map(p => [p.id, p])))
+      setLoading(false)
+    })
+  }, [])
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-6">
@@ -29,24 +31,24 @@ export default async function WinnersPage() {
         <p className="text-steel-500 mt-2">Congratulations to all our lucky winners!</p>
       </div>
 
-      {ws.length === 0 ? (
+      {loading ? (
+        <div className="card-tech p-8 text-center">
+          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        </div>
+      ) : winners.length === 0 ? (
         <div className="card-tech text-center py-16 fade-up fade-up-1">
-          <div className="w-14 h-14 mx-auto mb-4 bg-steel-100 rounded-xl flex items-center justify-center">
-            <span className="text-3xl">🏆</span>
-          </div>
-          <p className="text-graphite-600 font-semibold">No winners announced yet.</p>
+          <span className="text-3xl">🏆</span>
+          <p className="text-graphite-600 font-semibold mt-3">No winners announced yet.</p>
           <p className="text-sm text-steel-400 mt-1">Stay tuned for our upcoming lucky draws!</p>
         </div>
       ) : (
         <div className="space-y-3 fade-up fade-up-1">
-          {ws.map((w: Winner, i: number) => {
+          {winners.map((w, i) => {
             const product = productMap[w.product_id || '']
-            const medals = ['🥇', '🥈', '🥉']
+            const medals  = ['🥇', '🥈', '🥉']
             return (
               <div key={w.id} className="card-tech card-hover p-4 flex items-center gap-4">
-                <div className="text-2xl w-8 text-center flex-shrink-0">
-                  {i < 3 ? medals[i] : '🏅'}
-                </div>
+                <div className="text-2xl w-8 text-center flex-shrink-0">{i < 3 ? medals[i] : '🏅'}</div>
                 <div className="w-14 h-14 rounded-lg overflow-hidden bg-steel-100 flex-shrink-0 border border-steel-200">
                   {product?.images?.[0]
                     ? <img src={product.images[0]} alt="" className="w-full h-full object-cover" />

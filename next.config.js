@@ -1,14 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    // Allow any HTTPS image source - handles Supabase storage, placeholders, and any CDN
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
+      { protocol: 'https', hostname: '**' }, // Firebase Storage + any CDN
     ],
   },
 }
-
 module.exports = nextConfig

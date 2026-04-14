@@ -1,12 +1,14 @@
-import { supabase } from '@/lib/supabase'
+'use client'
+import { useEffect, useState } from 'react'
+import { getOne } from '@/lib/firebase'
+import type { Settings } from '@/lib/types'
 
-export default async function WinnerBanner() {
-  const sb = supabase as any
-  const { data: settings } = await sb
-    .from('settings')
-    .select('banner_enabled, banner_text')
-    .eq('id', 1)
-    .single()
+export default function WinnerBanner() {
+  const [settings, setSettings] = useState<Settings | null>(null)
+
+  useEffect(() => {
+    getOne<Settings>('settings', 'main').then(setSettings)
+  }, [])
 
   if (!settings?.banner_enabled || !settings?.banner_text) return null
 

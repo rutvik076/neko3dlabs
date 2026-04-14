@@ -1,30 +1,32 @@
-import { supabase } from '@/lib/supabase'
+'use client'
+import { Suspense, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { getAll, where, orderBy } from '@/lib/firebase'
 import type { Product } from '@/lib/types'
 import LuckyDrawForm from '@/components/LuckyDrawForm'
 import Link from 'next/link'
 
-export const revalidate = 60
+// ── Inner component uses useSearchParams — must be inside <Suspense>
+function LuckyPageInner() {
+  const searchParams = useSearchParams()
+  const selectedId   = searchParams.get('product') || ''
+  const [draws,   setDraws]   = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
 
-interface Props { searchParams: { product?: string } }
+  useEffect(() => {
+    getAll<Product>('products', [
+      where('type',  '==', 'LUCKY_DRAW'),
+      where('stock', '==', 'in'),
+      orderBy('created_at', 'desc'),
+    ]).then(data => { setDraws(data); setLoading(false) })
+  }, [])
 
-export default async function LuckyPage({ searchParams }: Props) {
-  const sb = supabase as any
-  const { data: products } = await sb
-    .from('products')
-    .select('*')
-    .eq('type', 'LUCKY_DRAW')
-    .eq('stock', 'in')
-    .order('created_at', { ascending: false })
-
-  const draws = (products as Product[]) || []
   const ytUrl = process.env.NEXT_PUBLIC_YOUTUBE_URL || 'https://youtube.com'
-  const selectedId = searchParams.product
-
   const steps = [
-    { n: '01', title: 'Subscribe', desc: 'Subscribe to our YouTube channel to be eligible.', href: ytUrl, cta: 'Subscribe Now →' },
-    { n: '02', title: 'Like & Share', desc: 'Like the product video and share it on your social media.' },
-    { n: '03', title: 'Screenshot', desc: 'Take a screenshot clearly showing your subscribed status.' },
-    { n: '04', title: 'Register', desc: 'Fill the form below with your details and upload proof.' },
+    { n: '01', title: 'Subscribe',   desc: 'Subscribe to our YouTube channel to be eligible.', href: ytUrl, cta: 'Subscribe Now →' },
+    { n: '02', title: 'Like & Share',desc: 'Like the product video and share it on your social media.' },
+    { n: '03', title: 'Screenshot',  desc: 'Take a screenshot clearly showing your subscription.' },
+    { n: '04', title: 'Register',    desc: 'Fill the form below with your details and upload proof.' },
   ]
 
   return (
@@ -60,14 +62,17 @@ export default async function LuckyPage({ searchParams }: Props) {
         ))}
       </div>
 
-      {draws.length === 0 ? (
+      {/* Draws list */}
+      {loading ? (
+        <div className="card-tech p-8 text-center">
+          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        </div>
+      ) : draws.length === 0 ? (
         <div className="card-tech text-center py-12 fade-up fade-up-2">
           <div className="w-12 h-12 mx-auto mb-3 bg-steel-100 rounded-xl flex items-center justify-center text-2xl">🎁</div>
           <p className="text-steel-500 font-medium">No active lucky draws right now.</p>
           <p className="text-sm text-steel-400 mt-1">Check back soon or browse products!</p>
-          <Link href="/" className="btn-tech btn-primary inline-flex mt-4 px-5 py-2.5 text-sm">
-            ← Browse Products
-          </Link>
+          <Link href="/" className="btn-tech btn-primary inline-flex mt-4 px-5 py-2.5 text-sm">← Browse Products</Link>
         </div>
       ) : (
         <div className="fade-up fade-up-2">
@@ -76,7 +81,7 @@ export default async function LuckyPage({ searchParams }: Props) {
             <h2 className="font-display text-lg font-bold text-graphite-700">Active Draws</h2>
           </div>
           <div className="space-y-3 mb-8">
-            {draws.map((p: Product) => (
+            {draws.map(p => (
               <Link key={p.id} href={`/lucky?product=${p.id}`}
                 className={`card-hover flex items-center gap-4 p-4 rounded-xl border-2 transition-all bg-white
                   ${selectedId === p.id
@@ -100,12 +105,24 @@ export default async function LuckyPage({ searchParams }: Props) {
               </Link>
             ))}
           </div>
-
-          {selectedId && draws.find((p: Product) => p.id === selectedId) && (
-            <LuckyDrawForm product={draws.find((p: Product) => p.id === selectedId)!} />
+          {selectedId && draws.find(p => p.id === selectedId) && (
+            <LuckyDrawForm product={draws.find(p => p.id === selectedId)!} />
           )}
         </div>
       )}
     </div>
+  )
+}
+
+// ── Outer component wraps inner in Suspense (required for useSearchParams)
+export default function LuckyPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-32">
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <LuckyPageInner />
+    </Suspense>
   )
 }
