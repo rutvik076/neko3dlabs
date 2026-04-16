@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { auth } from '@/lib/firebase'
+import { getFirebaseAuth } from '@/lib/firebase'
 import { onAuthStateChanged, type User } from 'firebase/auth'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminLoginForm from '@/components/admin/AdminLoginForm'
@@ -10,7 +10,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, u => {
+    const unsub = onAuthStateChanged(getFirebaseAuth(), u => {
       setUser(u)
       setLoading(false)
     })

@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { db } from '@/lib/firebase'
+import { getFirebaseDb } from '@/lib/firebase'
 import { collection, getDocs, updateDoc, doc, orderBy, query } from 'firebase/firestore'
 import type { Participant, Product } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
@@ -14,8 +14,8 @@ export default function AdminParticipants() {
 
   async function load() {
     const [pSnap, prodSnap] = await Promise.all([
-      getDocs(query(collection(db, 'participants'), orderBy('created_at', 'desc'))),
-      getDocs(collection(db, 'products')),
+      getDocs(query(collection(getFirebaseDb(), 'participants'), orderBy('created_at', 'desc'))),
+      getDocs(collection(getFirebaseDb(), 'products')),
     ])
     setParticipants(pSnap.docs.map(d => ({ id: d.id, ...d.data() } as Participant)))
     const map: Record<string, Product> = {}
@@ -25,7 +25,7 @@ export default function AdminParticipants() {
   useEffect(() => { load() }, [])
 
   async function updateStatus(id: string, status: 'approved'|'rejected') {
-    await updateDoc(doc(db, 'participants', id), { status })
+    await updateDoc(doc(getFirebaseDb(), 'participants', id), { status })
     setParticipants(ps => ps.map(p => p.id===id ? { ...p, status } : p))
   }
 

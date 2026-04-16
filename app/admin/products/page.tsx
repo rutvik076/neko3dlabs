@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { db } from '@/lib/firebase'
+import { getFirebaseDb } from '@/lib/firebase'
 import { uploadToCloudinary, FOLDERS } from '@/lib/cloudinary'
 import {
   collection, getDocs, addDoc, updateDoc, deleteDoc,
@@ -24,7 +24,7 @@ export default function AdminProducts() {
   const [deleting,  setDeleting]  = useState<string | null>(null)
 
   async function load() {
-    const snap = await getDocs(query(collection(db, 'products'), orderBy('created_at', 'desc')))
+    const snap = await getDocs(query(collection(getFirebaseDb(), 'products'), orderBy('created_at', 'desc')))
     setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Product)))
   }
   useEffect(() => { load() }, [])
@@ -77,10 +77,10 @@ export default function AdminProducts() {
       updated_at:       serverTimestamp(),
     }
     if (form.id) {
-      await updateDoc(doc(db, 'products', form.id), payload)
+      await updateDoc(doc(getFirebaseDb(), 'products', form.id), payload)
     } else {
       payload.created_at = serverTimestamp()
-      await addDoc(collection(db, 'products'), payload)
+      await addDoc(collection(getFirebaseDb(), 'products'), payload)
     }
     setSaving(false); setModal(false); load()
   }
@@ -88,7 +88,7 @@ export default function AdminProducts() {
   async function deleteProduct(id: string) {
     if (!confirm('Delete this product?')) return
     setDeleting(id)
-    await deleteDoc(doc(db, 'products', id))
+    await deleteDoc(doc(getFirebaseDb(), 'products', id))
     setDeleting(null); load()
   }
 

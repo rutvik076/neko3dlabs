@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { db } from '@/lib/firebase'
+import { getFirebaseDb } from '@/lib/firebase'
 import { uploadToCloudinary, FOLDERS } from '@/lib/cloudinary'
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore'
 import type { Product } from '@/lib/types'
@@ -47,7 +47,7 @@ export default function LuckyDrawForm({ product }: Props) {
       }
 
       // Layer 1: phone duplicate check
-      const q    = query(collection(db, 'participants'),
+      const q    = query(collection(getFirebaseDb(), 'participants'),
         where('product_id', '==', product.id),
         where('phone', '==', form.phone.trim()))
       const snap = await getDocs(q)
@@ -62,7 +62,7 @@ export default function LuckyDrawForm({ product }: Props) {
 
       // Save to Firestore
       setStep('saving')
-      await addDoc(collection(db, 'participants'), {
+      await addDoc(collection(getFirebaseDb(), 'participants'), {
         product_id:      product.id,
         name:            form.name.trim(),
         phone:           form.phone.trim(),

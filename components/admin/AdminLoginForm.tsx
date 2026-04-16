@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Image from 'next/image'
-import { auth } from '@/lib/firebase'
+import { getFirebaseAuth } from '@/lib/firebase'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 
 export default function AdminLoginForm() {
@@ -15,7 +15,7 @@ export default function AdminLoginForm() {
     setLoading(true)
     setError('')
     try {
-      await signInWithEmailAndPassword(auth, email, password)
+      await signInWithEmailAndPassword(getFirebaseAuth(), email, password)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Login failed'
       setError(msg.includes('invalid-credential') || msg.includes('wrong-password')

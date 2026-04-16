@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { db } from '@/lib/firebase'
+import { getFirebaseDb } from '@/lib/firebase'
 import { uploadToCloudinary, FOLDERS } from '@/lib/cloudinary'
 import { collection, getDocs, addDoc, updateDoc, doc, orderBy, query, where } from 'firebase/firestore'
 import type { Winner, Product, Participant } from '@/lib/types'
@@ -15,9 +15,9 @@ export default function AdminWinners() {
 
   async function load() {
     const [prodSnap, partSnap, winSnap] = await Promise.all([
-      getDocs(query(collection(db, 'products'),     where('type', '==', 'LUCKY_DRAW'))),
-      getDocs(query(collection(db, 'participants'), where('status', '==', 'approved'))),
-      getDocs(query(collection(db, 'winners'),      orderBy('created_at', 'desc'))),
+      getDocs(query(collection(getFirebaseDb(), 'products'),     where('type', '==', 'LUCKY_DRAW'))),
+      getDocs(query(collection(getFirebaseDb(), 'participants'), where('status', '==', 'approved'))),
+      getDocs(query(collection(getFirebaseDb(), 'winners'),      orderBy('created_at', 'desc'))),
     ])
     setProducts(    prodSnap.docs.map(d => ({ id: d.id, ...d.data() } as Product)))
     setParticipants(partSnap.docs.map(d => ({ id: d.id, ...d.data() } as Participant)))
@@ -36,7 +36,7 @@ export default function AdminWinners() {
     const arr    = new Uint32Array(1)
     window.crypto.getRandomValues(arr)
     const winner = eligible[arr[0] % eligible.length]
-    await addDoc(collection(db, 'winners'), {
+    await addDoc(collection(getFirebaseDb(), 'winners'), {
       product_id:     productId,
       participant_id: winner.id,
       winner_name:    winner.name,
@@ -53,7 +53,7 @@ export default function AdminWinners() {
     setUploadingProof(winnerId)
     try {
       const url = await uploadToCloudinary(file, FOLDERS.SHIPPING_PROOFS)
-      await updateDoc(doc(db, 'winners', winnerId), { shipping_proof_url: url })
+      await updateDoc(doc(getFirebaseDb(), 'winners', winnerId), { shipping_proof_url: url })
       load()
     } catch (err: unknown) {
       alert('Upload failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
@@ -61,7 +61,7 @@ export default function AdminWinners() {
   }
 
   async function togglePublish(id: string, current: boolean) {
-    await updateDoc(doc(db, 'winners', id), { is_published: !current })
+    await updateDoc(doc(getFirebaseDb(), 'winners', id), { is_published: !current })
     setWinners(ws => ws.map(w => w.id === id ? { ...w, is_published: !current } : w))
   }
 

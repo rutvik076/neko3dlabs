@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { db } from '@/lib/firebase'
+import { getFirebaseDb } from '@/lib/firebase'
 import { collection, getDocs, updateDoc, doc, orderBy, query } from 'firebase/firestore'
 import type { Order } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
@@ -10,14 +10,14 @@ export default function AdminOrders() {
   const [filter, setFilter] = useState<'all'|'pending'|'shipped'|'completed'|'cancelled'>('all')
 
   async function load() {
-    const q    = query(collection(db, 'orders'), orderBy('created_at', 'desc'))
+    const q    = query(collection(getFirebaseDb(), 'orders'), orderBy('created_at', 'desc'))
     const snap = await getDocs(q)
     setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() } as Order)))
   }
   useEffect(() => { load() }, [])
 
   async function updateStatus(id: string, status: Order['status']) {
-    await updateDoc(doc(db, 'orders', id), { status, updated_at: new Date().toISOString() })
+    await updateDoc(doc(getFirebaseDb(), 'orders', id), { status, updated_at: new Date().toISOString() })
     setOrders(os => os.map(o => o.id===id ? { ...o, status } : o))
   }
 

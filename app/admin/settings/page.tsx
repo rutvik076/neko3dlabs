@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { db } from '@/lib/firebase'
+import { getFirebaseDb } from '@/lib/firebase'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import type { Settings } from '@/lib/types'
 
@@ -10,14 +10,14 @@ export default function AdminSettings() {
   const [saved,  setSaved]  = useState(false)
 
   useEffect(() => {
-    getDoc(doc(db, 'settings', 'main')).then(snap => {
+    getDoc(doc(getFirebaseDb(), 'settings', 'main')).then(snap => {
       if (snap.exists()) setForm(snap.data() as Settings)
     })
   }, [])
 
   async function save() {
     setSaving(true)
-    await setDoc(doc(db, 'settings', 'main'), {
+    await setDoc(doc(getFirebaseDb(), 'settings', 'main'), {
       youtube_url:     form.youtube_url     || '',
       whatsapp_number: form.whatsapp_number || '',
       site_name:       form.site_name       || 'Neko3DLabs',

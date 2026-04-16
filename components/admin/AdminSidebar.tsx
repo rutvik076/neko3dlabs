@@ -3,7 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { auth } from '@/lib/firebase'
+import { getFirebaseAuth } from '@/lib/firebase'
 import { signOut } from 'firebase/auth'
 
 const navItems = [
@@ -20,7 +20,7 @@ export default function AdminSidebar() {
   const [open, setOpen] = useState(false)
 
   async function logout() {
-    await signOut(auth)
+    await signOut(getFirebaseAuth())
     window.location.reload()
   }
 
